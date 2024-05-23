@@ -1,0 +1,127 @@
+CUDA_VISIBLE_DEVICES=3,2,5 ./webui.sh --share
+
+./webui.sh --share --gradio-auth-path /local/disk6/chrenx/humanai/auth.json --skip-prepare-environment
+
+# CUDA_VISIBLE_DEVICES=6 gradio launch
+
+
+CUDA_VISIBLE_DEVICES=7 python scripts/txt2img.py --prompt "paris with eiffel tower" --plms --skip_grid --n_samples 1 --ckpt /home/chrenx/humanai/tmp/stable-diffusion-webui3/models/Stable-diffusion/colorwater-v4.safetensors
+
+
+backup: /nfs/disk9/chrenx/
+rsync -n -av --progress humanai/ /nfs/disk9/chrenx/ --exclude humanai/tmp/
+
+
+model cuda usage:
+Moxin (5252)
+    512:     6958 MB
+    1024:    11344 MB
+Oil painting
+    512:
+    1024
+Watercolor: (5253)
+    512:     6950
+    1024:    11310
+
+
+user_data = gr.State({
+        "username": None,
+        "image_style": None,
+        "image_size": 512,
+        "prompt": "",
+        "negative_prompt": "",
+        "sampling_steps": 20,
+        "cfg_scale": 5,
+        "seed": 246372,
+        "satisfaction": None,
+        "why_unsatisfied": "",
+    })
+
+store_data: (csv)
+username1, timestamp, image_style, image_size, prompt, negative_prompt, sampling_steps, cfg_scale, seed, satisfaction, why_unsatisfied
+
+store data: json
+{
+    "username1": {
+        "timestamp": int,
+        0: {
+            "image_style": None,
+            "image_size": 512,
+            "prompt": "",
+            "negative_prompt": "",
+            "sampling_steps": 20,
+            "cfg_scale": 5,
+            "seed": 246372,
+            "satisfaction": None,
+            "why_unsatisfied": "",
+        },
+        1: {
+        }
+    },
+    "username2": {
+    }
+}
+
+
+
+
+gr_request
+    cookies:
+    {'access-token-sCt3BaebqAGctbsWHTv7tzO4qxpU5qR-Ts506fT787w': '4JztBzRWZCIaxehe-lRpww', 'access-token-unsecure-sCt3BaebqAGctbsWHTv7tzO4qxpU5qR-Ts506fT787w': '4JztBzRWZCIaxehe-lRpww'}
+
+    path_params:
+    path_params:  {}
+
+    headers:
+    Request headers dictionary: Headers({'host': '28aed8fbbdf0c3a245.gradio.live', 
+                                         'user-agent': 'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:126.0) Gecko/20100101 Firefox/126.0', 
+                                         'content-length': '95', 'accept': '*/*', 
+                                         'accept-encoding': 'gzip, deflate, br, zstd', 
+                                         'accept-language': 'en-US,en;q=0.5', 
+                                         'content-type': 'application/json', 
+                                         'cookie': 'access-token-sCt3BaebqAGctbsWHTv7tzO4qxpU5qR-Ts506fT787w=4JztBzRWZCIaxehe-lRpww; access-token-unsecure-sCt3BaebqAGctbsWHTv7tzO4qxpU5qR-Ts506fT787w=4JztBzRWZCIaxehe-lRpww', 
+                                         'origin': 'https://28aed8fbbdf0c3a245.gradio.live', 'priority': 'u=4', 'referer': 'https://28aed8fbbdf0c3a245.gradio.live/', 'sec-fetch-dest': 'empty', 
+                                         'sec-fetch-mode': 'cors', 'sec-fetch-site': 'same-origin', 'x-amzn-trace-id': 'Root=1-664cbf26-3a51d8f5458d69917b39a6c1', 
+                                         'x-forwarded-for': '141.214.17.120, 172.31.13.118', 'x-forwarded-port': '443', 'x-forwarded-proto': 'https'})
+
+    client.host
+    IP address: 172.31.13.118
+
+    client.host:
+    Query parameters: {}
+    
+    session_hash
+    Session hash: xpv03tgvjk
+
+
+JS_CODE = """
+function addScriptAndLogout() {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.text = `
+        function clearCookiesAndLogout() {
+            document.cookie.split(";").forEach(function(c) { 
+                document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/"); 
+            });
+            sessionStorage.clear();
+            window.location.href = "https://www.google.com/";
+        }
+    `;
+    document.head.appendChild(script);
+}
+"""
+
+JS_CODE = """
+function addScript() {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.text = `
+        function goLogout() {
+            document.getElementById('gologout').click();
+        }
+    `;
+    document.head.appendChild(script);
+}
+"""
+
+
