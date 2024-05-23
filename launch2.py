@@ -5,7 +5,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import RedirectResponse
 from flask import session
 
-from utils.launch_utils import change_image_size, clear_cuda_memory, \
+from utils.launch_utils2 import change_image_size, clear_cuda_memory, \
                                generate_image, get_cuda_info, load_model
 
 
