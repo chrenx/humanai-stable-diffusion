@@ -10,12 +10,12 @@ import config
 from config import IMAGE_STYLE_CHOICES, IMAGE_SIZE_CHOICES
 from utils.launch_utils1 import create_greeting, get_cuda_info, get_auth_cred, \
                                 update_image_size, update_image_style, debug_fn, \
-                                handle_generate, handle_save, disable_ui, enable_ui, MYLOGGER
+                                handle_generate, handle_save, disable_ui, enable_ui, \
+                                MYLOGGER
 
 MYLOGGER.setLevel(logger.INFO)
 
 app = FastAPI()
-
 
 with gr.Blocks() as demo: 
     user_data = gr.State({
@@ -95,7 +95,7 @@ with gr.Blocks() as demo:
                                  sampling_steps, cfg_scale, seed], 
                          outputs=[user_data, image_output, satisfaction, why_unsatisfied, 
                                   save_button, info_output, generate_button],
-                         show_progress=True, queue=True, trigger_mode="once")\
+                         show_progress=True, trigger_mode="once")\
                    .then(fn=enable_ui, outputs=[image_style, image_size, prompt, 
                                                 negative_prompt, sampling_steps, 
                                                 cfg_scale, seed, generate_button])
