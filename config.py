@@ -1,7 +1,7 @@
 
 auth_cred_fpath = "auth.json" # user credentials
 auth_message_fpath = "data_agreement.html" # data agreement file path
-user_data_store_fpath = "public_user_data.csv" 
+user_data_store_fpath = "user-data/public_user_data.csv" 
 
 SAFETY_CHECK = True
 
@@ -15,6 +15,7 @@ MODEL_NAME_PATH_MAP = {
 IMAGE_STYLE_CHOICES = ["Oil Painting", "Watercolor", "MoXin (traditional Chinese Painting)"]
 IMAGE_SIZE_CHOICES = [512, 1024]
 
+FREE_MEMORY_THRESHOLD = 0.75e+10
 
 
 

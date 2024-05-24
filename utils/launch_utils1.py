@@ -10,7 +10,7 @@ from diffusers.utils import logging
 from transformers import CLIPImageProcessor
 
 import config
-from config import MODEL_NAME_PATH_MAP, CRED_FPATH, SAFETY_CHECK
+from config import MODEL_NAME_PATH_MAP, CRED_FPATH, SAFETY_CHECK, FREE_MEMORY_THRESHOLD
 
 logging.set_verbosity_error()
 warnings.filterwarnings("ignore")
@@ -18,6 +18,52 @@ warnings.filterwarnings("ignore")
 logger.basicConfig(level=os.environ.get("LOGLEVEL", "INFO"))
 MYLOGGER = logger.getLogger()
 
+class GPUMonitor:
+    def __init__(self):
+        print('GPU monitor created ...')
+        self.allocation = {}
+        
+        cuda_visible_devices = os.environ.get('CUDA_VISIBLE_DEVICES')
+
+        if cuda_visible_devices:
+            cuda_ids = cuda_visible_devices.split(',')
+            for i, cuda_id in enumerate(cuda_ids):
+                self.allocation[int(i)] = {
+                    "users": [],
+                    "cuda_id": int(cuda_id)
+                }
+        else:
+            for i in range(torch.cuda.device_count()): 
+                self.allocation[int(i)] = {
+                    "users": [],
+                    "cuda_id": int(i)
+                }
+    
+    def get_free_device(self, username):
+        for device_id, info in self.allocation.items():
+            if len(info["users"]) < 3: #! only allow 3 users on one GPU
+                free_memory = self._get_freememory(device_id)
+                if free_memory < FREE_MEMORY_THRESHOLD:
+                    continue
+                self.allocation[device_id]["users"].append(username)
+                cuda_id = info['cuda_id']
+                MYLOGGER.info(f"---- GPU Monitor gives USER {username} cuda {cuda_id}, "\
+                              f"device {device_id}")
+                return cuda_id, device_id
+        return None, None
+    
+    def release_device(self, device_id, username):
+        MYLOGGER.info(f"---- USER {username} released from device {device_id}")
+        self.allocation[device_id]["users"].remove(username)
+        
+    def _get_freememory(self, device_id):
+        return torch.cuda.get_device_properties(device_id).total_memory - \
+               torch.cuda.memory_allocated(device_id)
+        
+
+GPU_monitor = GPUMonitor() 
+
+################################################################################
 
 def debug_fn(user_data):
     print('user_data: ', user_data)
@@ -290,7 +336,8 @@ def get_cuda_info():
             print(f"    Device ID {i}: {torch.cuda.get_device_name(i)}")
     print('################################################################')
     
-def find_most_idle_gpu(estimated_model_size):
+def find_most_idle_gpu(estimated_model_size, username):
+    print(f"{username} LOOKING FOR IDLE GPU --------------------")
     num_gpus = torch.cuda.device_count()
     max_free_memory = 0
     best_gpu = None
@@ -299,25 +346,27 @@ def find_most_idle_gpu(estimated_model_size):
         allocated_memory = torch.cuda.memory_allocated(i)
         free_memory = total_memory - allocated_memory
         # Check if the GPU has enough memory for the model
+        print(f"{username} free_memory {free_memory}")
+        print(f"{username} estimated_model_size {estimated_model_size}")
         if free_memory >= estimated_model_size and free_memory > max_free_memory:
             max_free_memory = free_memory
             best_gpu = i
     if best_gpu is None:
-        gr.Warning("No GPU with enough free memory for the model. Waiting for idle GPU")
+        gr.Warning("No GPU with enough free memory for the model. "\
+                   "Waiting for idle GPU. If it takes long, please come back later!")
     return best_gpu
 
-def wait_for_idle_gpu(estimated_model_size, check_interval=6):
+def wait_for_idle_gpu(username, check_interval=6):
     while True:
-        best_gpu = find_most_idle_gpu(estimated_model_size)
-        if best_gpu is not None:
-            return best_gpu
+        # best_gpu = find_most_idle_gpu(estimated_model_size, username)
+        cuda_id, device_id = GPU_monitor.get_free_device(username)
+        if cuda_id is not None:
+            return cuda_id, device_id
+        # print(f"{username} SLEEPING --------------------------")
+        gr.Warning("No GPU with enough free memory for the model. "\
+                   "Waiting for idle GPU. If it takes long, you can "\
+                   "keep the web there or come back later!")
         time.sleep(check_interval)
-
-def estimate_model_size(user_data):
-    if user_data['image_size'] == 512:
-        return 7.5e+9
-    else:
-        return 1.2e+10
 
 def load_model(user_data):
     """
@@ -344,22 +393,21 @@ def load_model(user_data):
                             feature_extractor=feature_extractor,
                             image_size=image_size)
     
-    estimated_model_size = estimate_model_size(user_data)
+    cuda_id, device_id = wait_for_idle_gpu(username)
     
-    # best_gpu = find_most_idle_gpu(estimated_model_size)
-    best_gpu = wait_for_idle_gpu(estimated_model_size)
-
-    device = torch.device(f'cuda:{best_gpu}')
-    before = torch.cuda.get_device_properties(best_gpu).total_memory - torch.cuda.memory_allocated(best_gpu)
+    # device = torch.device(f'cuda:{cuda_id}')
+    before = torch.cuda.get_device_properties(device_id).total_memory - \
+             torch.cuda.memory_allocated(device_id)
     before /= (1024 ** 2)
     #*********************
-    loaded_model.to(device)
+    loaded_model.to(f'cuda:{device_id}')
     
-    after = torch.cuda.get_device_properties(best_gpu).total_memory - torch.cuda.memory_allocated(best_gpu)
+    after = torch.cuda.get_device_properties(device_id).total_memory - \
+            torch.cuda.memory_allocated(device_id)
     after /= (1024 ** 2)
     
-    MYLOGGER.info(f"---- USER {username}: model loaded on device {best_gpu}")
-    MYLOGGER.info(f"---- USER {username}: model usage of cuda: {(before - after):2f} MB")
+    MYLOGGER.info(f"---- USER {username}: model loaded on cuda {cuda_id}, device {device_id}")
+    MYLOGGER.info(f"---- USER {username}: model usage of GPU: {(before - after):2f} MB")
     return loaded_model
 
 def load_and_generate_image(user_data):
@@ -370,9 +418,12 @@ def load_and_generate_image(user_data):
     Returns:
         image: gr.Image()
     """
+    gr.Warning("Generation may take long time, especially when there are "\
+               "multiple users using the model at the same time. "\
+               "You can leave the web there and come back later!")
     MYLOGGER.info(f"---- USER {user_data['username']} Generating image...")
     MYLOGGER.info(f"**** USER {user_data['username']}:  "\
-                  f"style: {user_data['image_style']} || size: {user_data['image_size']}"\
+                  f"style: {user_data['image_style']} || size: {user_data['image_size']} || "\
                   f"p: {user_data['prompt']} || np: {user_data['negative_prompt']} || "\
                   f"sampling: {user_data['sampling_steps']} || cfg: {user_data['cfg_scale']} || "\
                   f"seed: {user_data['seed']}")
@@ -385,6 +436,10 @@ def load_and_generate_image(user_data):
         guidance_scale=user_data['cfg_scale'], # cfg
         generator=torch.manual_seed(user_data['seed']),
     )
+
+
+    GPU_monitor.release_device(int(str(loaded_model.device)[5:]), user_data['username'])
+    
     nsfw_detected = image['nsfw_content_detected'][0]
     
     image = image.images[0] # PIL.Image.Image
