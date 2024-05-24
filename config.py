@@ -15,6 +15,8 @@ MODEL_NAME_PATH_MAP = {
 IMAGE_STYLE_CHOICES = ["Oil Painting", "Watercolor", "MoXin (traditional Chinese Painting)"]
 IMAGE_SIZE_CHOICES = [512, 1024]
 
+REMOTE_HOST = "127.0.1.1"
+REMOTE_PORT = 4242
 
 
 
