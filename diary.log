@@ -125,3 +125,4 @@ function addScript() {
 """
 
 
+不要用waiting for gpu的while loop
