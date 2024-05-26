@@ -87,9 +87,9 @@ with gr.Blocks() as demo:
             
     ########################################################################
             
-    image_style.change(handle_init_model, inputs=[user_data, image_style], 
-                                           outputs=[user_data, image_style],
-                                           show_progress=False)
+    image_style.change(handle_init_model, inputs=[user_data, image_style, image_size], 
+                                           outputs=[loaded_model],
+                                           show_progress=True)
     # image_size.change(update_image_size, inputs=[user_data, image_size], 
     #                                      outputs=[user_data, image_size],
     #                                      show_progress=False)

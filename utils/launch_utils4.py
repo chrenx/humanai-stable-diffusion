@@ -467,8 +467,25 @@ def post_gen_ui(user_data, gen_stop_flag):
 
 
 
-def handle_init_model(image_style, image_size):
+def handle_init_model(user_data, image_style, image_size):
+    MYLOGGER.info(f"---- USER {user_data['username']}: handle load model")
     
+    gr.Info("Server is working load_model ...")
+
+    safetensor_path = MODEL_NAME_PATH_MAP[user_data['image_style']]
+    
+    # progress(0.2, "Loading safety checker...")
+    safety_checker = StableDiffusionSafetyChecker.from_pretrained("CompVis/stable-diffusion-safety-checker")
+    
+    # progress(0.4, "Loading feature extractor...")
+    feature_extractor = CLIPImageProcessor.from_pretrained("openai/clip-vit-base-patch32")
+    
+    # progress(0.6, "Loading model...")
+    loaded_model = StableDiffusionPipeline.from_single_file(safetensor_path,
+                            extract_ema=True,
+                            safety_checker=safety_checker,
+                            feature_extractor=feature_extractor,
+                            image_size=user_data['image_size'])
 
 
 ################################################################################
