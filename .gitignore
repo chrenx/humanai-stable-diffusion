@@ -1,0 +1,15 @@
+# .gitignore
+**/__pycache__/
+
+# auth.json
+# debug.ipynb
+# *.csv
+# user-data/*
+
+models/*
+output.png
+
+!models/.gitkeep
+
+
+
