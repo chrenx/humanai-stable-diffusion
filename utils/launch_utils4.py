@@ -466,6 +466,11 @@ def post_gen_ui(user_data, gen_stop_flag):
     return final_return
 
 
+
+def handle_init_model(image_style, image_size):
+    
+
+
 ################################################################################
 
 def offload_model(loaded_model, user_data):

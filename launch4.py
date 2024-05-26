@@ -14,7 +14,7 @@ from utils.launch_utils1 import create_greeting, get_cuda_info, get_auth_cred, \
                                 update_image_size, update_image_style, debug_fn, \
                                 handle_generate, handle_save, pre_gen_ui, post_gen_ui, \
                                 handle_load_model, handle_model2device, \
-                                handle_image_generation, \
+                                handle_image_generation, handle_init_model, \
                                 MYLOGGER
 
 MYLOGGER.setLevel(logger.INFO)
@@ -87,9 +87,9 @@ with gr.Blocks() as demo:
             
     ########################################################################
             
-    # image_style.change(update_image_style, inputs=[user_data, image_style], 
-    #                                        outputs=[user_data, image_style],
-    #                                        show_progress=False)
+    image_style.change(handle_init_model, inputs=[user_data, image_style], 
+                                           outputs=[user_data, image_style],
+                                           show_progress=False)
     # image_size.change(update_image_size, inputs=[user_data, image_size], 
     #                                      outputs=[user_data, image_size],
     #                                      show_progress=False)
