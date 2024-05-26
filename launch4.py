@@ -10,11 +10,9 @@ import config
 from config import IMAGE_STYLE_CHOICES, IMAGE_SIZE_CHOICES, \
                    INITIAL_SAMPLING_STEPS, INITIAL_CFG, INITIAL_SEED, INITIAL_IMAGE_SIZE, \
                    NUM_GPU, NUM_USER_PER_GPU
-from utils.launch_utils1 import create_greeting, get_cuda_info, get_auth_cred, \
-                                update_image_size, update_image_style, debug_fn, \
-                                handle_generate, handle_save, pre_gen_ui, post_gen_ui, \
-                                handle_load_model, handle_model2device, \
-                                handle_image_generation, handle_init_model, \
+from utils.launch_utils4 import create_greeting, get_cuda_info, get_auth_cred, \
+                                debug_fn, handle_save, pre_gen_ui, post_gen_ui, \
+                                handle_init_model, handle_generation, \
                                 MYLOGGER
 
 MYLOGGER.setLevel(logger.INFO)
@@ -90,38 +88,14 @@ with gr.Blocks() as demo:
     image_style.change(handle_init_model, inputs=[user_data, image_style, image_size], 
                                            outputs=[loaded_model],
                                            show_progress=True)
-    # image_size.change(update_image_size, inputs=[user_data, image_size], 
-    #                                      outputs=[user_data, image_size],
-    #                                      show_progress=False)
     
-    generate_button.click(fn=pre_gen_ui, 
-                          inputs=[user_data, image_style, image_size, prompt, 
-                                  negative_prompt, sampling_steps, 
-                                  cfg_scale, seed],
-                          outputs=[user_data, image_style, image_size, prompt, 
-                                   negative_prompt, sampling_steps, 
-                                   cfg_scale, seed, generate_button, gen_stop_flag],
-                          show_progress=True,)\
-                   .success(fn=handle_load_model,
-                         inputs=[user_data, gen_stop_flag], 
-                         outputs=[loaded_model, gen_stop_flag],
-                         show_progress=True, trigger_mode="once")\
-                   .success(fn=handle_model2device,
-                         inputs=[user_data, loaded_model, gen_stop_flag],
-                         outputs=[loaded_model, gen_stop_flag],
-                         show_progress=True, trigger_mode="once")\
-                   .success(fn=handle_image_generation, # and offload model as well
-                         inputs=[user_data, loaded_model, gen_stop_flag],
-                         outputs=[image_output, info_output, loaded_model, 
-                                  image_style, image_size, prompt, 
-                                  negative_prompt, sampling_steps, 
-                                  cfg_scale, seed, generate_button, 
-                                  gen_stop_flag],
-                         show_progress=True, trigger_mode="once")\
-                   .success(fn=post_gen_ui, 
-                         inputs=[user_data, gen_stop_flag],
-                         outputs=[save_button, satisfaction, why_unsatisfied, gen_stop_flag])
-    
+    generate_button.click(fn=handle_generation,
+                         inputs=[user_data, loaded_model, image_style, image_size, prompt, 
+                                 negative_prompt, sampling_steps, cfg_scale, seed], 
+                         outputs=[user_data, image_output, info_output, generate_button,
+                                  save_button, satisfaction, why_unsatisfied],
+                         show_progress=True, queue=True, trigger_mode="once") \
+
     save_button.click(fn=handle_save,
                       inputs=[user_data, satisfaction, why_unsatisfied],
                       outputs=[user_data, satisfaction, why_unsatisfied, 

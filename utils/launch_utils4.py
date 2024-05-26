@@ -294,37 +294,6 @@ def handle_logout(user_data, demo):
     return 
     # return response
 
-def pre_gen_ui(user_data, image_style, image_size, prompt, negative_prompt, 
-                sampling_steps, cfg_scale, seed):
-
-    user_data['image_style'] = image_style 
-    user_data['image_size'] = image_size 
-    user_data['prompt'] = prompt 
-    user_data['negative_prompt'] = negative_prompt 
-    user_data['sampling_steps'] = sampling_steps 
-    user_data['cfg_scale'] = cfg_scale 
-    user_data['seed'] = seed 
-    
-    early_return = [user_data]
-    for i in range(8):
-        early_return.append(gr.update())
-    early_return.append(True) # gen_stop_flag
-
-    if user_data['image_style'] is None:
-        gr.Warning("Please select your imaging style!")
-        return early_return
-    
-    if user_data['prompt'] == '' and user_data['negative_prompt'] == '' or \
-       user_data['prompt'].isspace() and user_data['negative_prompt'].isspace():
-        gr.Warning("Please provide some prompt!")
-        return early_return
-    
-    final_return = [user_data]
-    for i in range(7):
-        final_return.append(gr.update(interactive=False))
-    final_return.append(gr.update(visible=False)) # generation button
-    final_return.append(False) # gen_stop_flag
-    return final_return
 
 def handle_load_model(user_data, gen_stop_flag):
     
@@ -468,25 +437,132 @@ def post_gen_ui(user_data, gen_stop_flag):
 
 
 def handle_init_model(user_data, image_style, image_size):
-    MYLOGGER.info(f"---- USER {user_data['username']}: handle load model")
+    MYLOGGER.info(f"---- USER {user_data['username']}: ---- initialize {image_style}")
     
-    gr.Info("Server is working load_model ...")
-
     safetensor_path = MODEL_NAME_PATH_MAP[user_data['image_style']]
     
-    # progress(0.2, "Loading safety checker...")
-    safety_checker = StableDiffusionSafetyChecker.from_pretrained("CompVis/stable-diffusion-safety-checker")
+    safety_checker = StableDiffusionSafetyChecker\
+                        .from_pretrained("CompVis/stable-diffusion-safety-checker")
     
-    # progress(0.4, "Loading feature extractor...")
     feature_extractor = CLIPImageProcessor.from_pretrained("openai/clip-vit-base-patch32")
     
-    # progress(0.6, "Loading model...")
     loaded_model = StableDiffusionPipeline.from_single_file(safetensor_path,
-                            extract_ema=True,
-                            safety_checker=safety_checker,
-                            feature_extractor=feature_extractor,
-                            image_size=user_data['image_size'])
+                                                            extract_ema=True,
+                                                            safety_checker=safety_checker,
+                                                            feature_extractor=feature_extractor,
+                                                            image_size=image_size)
+    return loaded_model
 
+def pre_gen_ui(user_data, image_style, image_size, prompt, negative_prompt, 
+                sampling_steps, cfg_scale, seed):
+
+    user_data['image_style'] = image_style 
+    user_data['image_size'] = image_size 
+    user_data['prompt'] = prompt 
+    user_data['negative_prompt'] = negative_prompt 
+    user_data['sampling_steps'] = sampling_steps 
+    user_data['cfg_scale'] = cfg_scale 
+    user_data['seed'] = seed 
+    
+    early_return = [user_data]
+    for i in range(8):
+        early_return.append(gr.update())
+    early_return.append(True) # gen_stop_flag
+
+    if user_data['image_style'] is None:
+        gr.Warning("Please select your imaging style!")
+        return early_return
+    
+    if user_data['prompt'] == '' and user_data['negative_prompt'] == '' or \
+       user_data['prompt'].isspace() and user_data['negative_prompt'].isspace():
+        gr.Warning("Please provide some prompt!")
+        return early_return
+    
+    final_return = [user_data]
+    for i in range(7):
+        final_return.append(gr.update(interactive=False))
+    final_return.append(gr.update(visible=False)) # generation button
+    final_return.append(False) # gen_stop_flag
+    return final_return
+
+def handle_generation(user_data, loaded_model, image_style, image_size, prompt, 
+                      negative_prompt, sampling_steps, cfg_scale, seed):
+    
+    user_data['image_style'] = image_style 
+    user_data['image_size'] = image_size 
+    user_data['prompt'] = prompt 
+    user_data['negative_prompt'] = negative_prompt 
+    user_data['sampling_steps'] = sampling_steps 
+    user_data['cfg_scale'] = cfg_scale 
+    user_data['seed'] = seed 
+    
+    early_return = [user_data]
+    for i in range(5):
+        early_return.append(gr.update())
+    
+    MYLOGGER.info(f"---- USER {user_data['username']}: ---- handle generation")
+    
+    username = user_data['username']
+    
+    cuda_id, device_id = GPU_monitor.get_free_device(username)
+    trigger_warning = True
+    
+    while cuda_id is None and device_id is None:
+        if trigger_warning:
+            trigger_warning = False
+            MYLOGGER.info(f"---- USER {username}: ---- waiting for GPU")
+            gr.Warning("No GPU with enough free memory for the model. "\
+                        "Waiting for idle GPU. Please don't leave.")
+        cuda_id, device_id = GPU_monitor.get_free_device(username)
+    
+    before = (torch.cuda.get_device_properties(device_id).total_memory - \
+             torch.cuda.memory_allocated(device_id)) / (1024 ** 2)
+
+    loaded_model.to(f'cuda:{device_id}')
+    
+    after = (torch.cuda.get_device_properties(device_id).total_memory - \
+            torch.cuda.memory_allocated(device_id)) / (1024 ** 2)
+    
+    MYLOGGER.info(f"---- USER {username}: ---- model being put on cuda" \
+                                        f" {cuda_id}, device {device_id}")
+    MYLOGGER.info(f"---- USER {username}: ---- model usage of GPU: {(before - after):2f} MB")
+    
+    image = loaded_model(
+        prompt=user_data['prompt'],
+        negative_prompt=user_data['negative_prompt'], 
+        num_inference_steps=user_data['sampling_steps'], # sampling steps
+        guidance_scale=user_data['cfg_scale'], # cfg
+        generator=torch.manual_seed(user_data['seed']),
+    )
+    
+    nsfw_detected = image['nsfw_content_detected'][0]
+    
+    image = image.images[0] # PIL.Image.Image
+    
+    collected = gc.collect()
+    print("collected before: ", collected)
+    del loaded_model
+    collected = gc.collect()
+    print("collected mid: ", collected)
+    with torch.cuda.device(device_id):
+        torch.cuda.empty_cache()   
+    collected = gc.collect()
+    print("collected after: ", collected)
+    
+    GPU_monitor.release_device(device_id, username)
+    ############################################################################
+    
+    if SAFETY_CHECK:
+        if nsfw_detected:
+            MYLOGGER.info(f"---- USER {username} : ---- improper prompt")
+            gr.Warning("Please use proper prompt!")
+            return early_return
+    
+    final_return = [user_data, image, user_data, gr.update(visible=False)]
+    for i in range(3):
+        final_return.append(gr.update(visible=True))    
+    
+    return final_return
 
 ################################################################################
 
