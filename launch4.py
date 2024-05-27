@@ -86,7 +86,7 @@ with gr.Blocks() as demo:
     ########################################################################
             
     image_style.change(handle_init_model, inputs=[user_data, image_style, image_size], 
-                                           outputs=[loaded_model],
+                                           outputs=[image_style, loaded_model],
                                            show_progress=True)
     
     generate_button.click(fn=handle_generation,
@@ -94,7 +94,8 @@ with gr.Blocks() as demo:
                                  negative_prompt, sampling_steps, cfg_scale, seed], 
                          outputs=[user_data, image_output, info_output, generate_button,
                                   save_button, satisfaction, why_unsatisfied],
-                         show_progress=True, queue=True, trigger_mode="once") \
+                         show_progress=True, queue=True, trigger_mode="once",
+                         concurrency_limit=NUM_GPU * NUM_USER_PER_GPU)
 
     save_button.click(fn=handle_save,
                       inputs=[user_data, satisfaction, why_unsatisfied],

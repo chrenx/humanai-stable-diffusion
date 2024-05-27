@@ -439,7 +439,7 @@ def post_gen_ui(user_data, gen_stop_flag):
 def handle_init_model(user_data, image_style, image_size):
     MYLOGGER.info(f"---- USER {user_data['username']}: ---- initialize {image_style}")
     
-    safetensor_path = MODEL_NAME_PATH_MAP[user_data['image_style']]
+    safetensor_path = MODEL_NAME_PATH_MAP[image_style]
     
     safety_checker = StableDiffusionSafetyChecker\
                         .from_pretrained("CompVis/stable-diffusion-safety-checker")
@@ -451,7 +451,7 @@ def handle_init_model(user_data, image_style, image_size):
                                                             safety_checker=safety_checker,
                                                             feature_extractor=feature_extractor,
                                                             image_size=image_size)
-    return loaded_model
+    return gr.update(), loaded_model
 
 def pre_gen_ui(user_data, image_style, image_size, prompt, negative_prompt, 
                 sampling_steps, cfg_scale, seed):
