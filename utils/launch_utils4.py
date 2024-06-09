@@ -8,14 +8,26 @@ from diffusers import StableDiffusionPipeline
 from diffusers.pipelines.stable_diffusion import StableDiffusionSafetyChecker
 from diffusers.utils import logging
 from transformers import CLIPImageProcessor
+from datetime import datetime
 
 import config
 from config import MODEL_NAME_PATH_MAP, CRED_FPATH, SAFETY_CHECK, \
                    FREE_MEMORY_THRESHOLD, NUM_USER_PER_GPU
 
+import nltk
+from nltk.tokenize import word_tokenize
+
+# Ensure that the necessary NLTK data files are downloaded
+nltk.download('punkt')
+
 logging.set_verbosity_error()
 warnings.filterwarnings("ignore")
 
+# logger.basicConfig(filename=os.path.join("user-data","sys_info.log"),
+#                     filemode='a',
+#                     format='%(asctime)s.%(msecs)02d %(levelname)s %(message)s',
+#                     datefmt='%Y-%m-%d-%H:%M:%S',
+#                     level=os.environ.get("LOGLEVEL", "INFO"))
 logger.basicConfig(level=os.environ.get("LOGLEVEL", "INFO"))
 MYLOGGER = logger.getLogger()
 
@@ -70,6 +82,10 @@ class GPUMonitor:
 GPU_monitor = GPUMonitor() 
 
 ################################################################################
+
+def count_tokens(input_string):
+    tokens = word_tokenize(input_string)
+    return len(tokens)
 
 def debug_fn(user_data, loaded_model):
     print("\n================================")
@@ -191,6 +207,13 @@ def handle_generate(user_data, prompt, negative_prompt,
     
     return final_return
 
+def satisfaction_slider_change(satisfaction):
+    if int(satisfaction) == 0:
+        # gr.Warning("Please choose your satisfaction.")
+        return gr.update(interactive=False) # save btn
+    else:
+        return gr.update(interactive=True) # save btn
+
 def handle_save(user_data, satisfaction, why_unsatisfied):
     """
     Returns:
@@ -212,32 +235,35 @@ def handle_save(user_data, satisfaction, why_unsatisfied):
     #             gr.update()  # generate_button
     #     ]
     
+    early_return = [user_data]
+    for _ in range(11):
+        early_return.append(gr.update())
     
-    
-    if (user_data['why_unsatisfied'].isspace() or user_data['why_unsatisfied'] == "") \
-       and user_data['satisfaction'] < 5: 
+    if int(user_data['satisfaction']) == 0: 
            
         user_data['why_unsatisfied'] = ""
-        gr.Warning("Since you are not quite satisfied. " \
-                   "Please leave some comments!")
-        return [user_data, 
-                gr.update(),  # satisfaction
-                gr.update(),  # why_unsatisfied
-                gr.update(),  # save_button
-                gr.update()  # generate_button
-        ]
+        gr.Warning("Please choose your satisfaction.")
+        return early_return
+        # return [user_data, 
+        #         gr.update(),  # satisfaction
+        #         gr.update(),  # why_unsatisfied
+        #         gr.update(),  # save_button
+        #         gr.update()  # generate_button
+        # ]
     
     #********** save to csv ***************************************************
     store_fpath = config.user_data_store_fpath
     # Fetch the last timestamp from the CSV file if it exists
+    cur_time = datetime.now()
+    cur_time = '{:%Y_%m_%d_%H:%M:%S}.{:02.0f}'.format(cur_time, cur_time.microsecond / 10000.0)
     last_timestamp = None
     if os.path.exists(store_fpath):
         with open(store_fpath, mode='r') as file:
             reader = csv.reader(file)
             for row in reader:
-                if row[0] != user_data['username']:
+                if row[1] != user_data['username']:
                     continue
-                last_timestamp = row[1]  # Assuming the second column is the timestamp
+                last_timestamp = row[2]  # Assuming the third column is the timestamp
 
     # Determine the new timestamp
     if last_timestamp is None:
@@ -249,6 +275,7 @@ def handle_save(user_data, satisfaction, why_unsatisfied):
 
     # Prepare data in the specified format
     row = [
+        cur_time,
         user_data['username'],
         last_timestamp,
         user_data['image_style'],
@@ -269,16 +296,18 @@ def handle_save(user_data, satisfaction, why_unsatisfied):
             "please click the button on the top right of image")
     #*************************************************************
     
-    user_data["satisfaction"] = 1
+    user_data["satisfaction"] = 0
     user_data['why_unsatisfied'] = ""
     
     final_return = [
         user_data, 
-        gr.update(visible=False, value=None), # satisfaction
+        gr.update(visible=False, value=0, interactive=False), # satisfaction
         gr.update(visible=False, value=""), # why_unsatisfied
         gr.update(visible=False), # save_button
-        gr.update(visible=True), # generate_button
+        gr.update(visible=True, interactive=True), # generate_button
     ]
+    for _ in range(7):
+        final_return.append(gr.update(interactive=True))
     return final_return
         
 def handle_logout(user_data, demo):
@@ -422,17 +451,21 @@ def handle_image_generation(user_data, loaded_model, gen_stop_flag):
     
     return final_return
 
-def post_gen_ui(user_data, gen_stop_flag):
-    if gen_stop_flag:
-        return gr.update(), gr.update(), gr.update(), False
+def post_gen_ui(loaded_model):
+    if loaded_model is not None:
+        collected = gc.collect()
     
-    MYLOGGER.info(f"---- USER {user_data['username']}: handle post gen ui")
-    
-    final_return = []
-    for i in range(3):
-        final_return.append(gr.update(visible=True))
-    final_return.append(False)
-    return final_return
+        print("collected before: ", collected)
+        loaded_model.to('cpu')
+        collected = gc.collect()
+        print("collected mid: ", collected)
+        torch.cuda.empty_cache()   
+        collected = gc.collect()
+        print("collected after: ", collected)
+        
+        torch.cuda.empty_cache()
+        loaded_model.to('cpu')
+    return loaded_model
 
 
 
@@ -451,7 +484,7 @@ def handle_init_model(user_data, image_style, image_size):
                                                             safety_checker=safety_checker,
                                                             feature_extractor=feature_extractor,
                                                             image_size=image_size)
-    return gr.update(), loaded_model
+    return gr.update(), loaded_model, gr.update(interactive=True)
 
 def pre_gen_ui(user_data, image_style, image_size, prompt, negative_prompt, 
                 sampling_steps, cfg_scale, seed):
@@ -478,70 +511,74 @@ def pre_gen_ui(user_data, image_style, image_size, prompt, negative_prompt,
         gr.Warning("Please provide some prompt!")
         return early_return
     
+    num_tokens = count_tokens(user_data['prompt'])
+    if count_tokens(user_data['prompt']) > 77:
+        gr.Warning(f"Prompt is too long, Currently {num_tokens} tokens.")
+        return early_return
+    
     final_return = [user_data]
     for i in range(7):
         final_return.append(gr.update(interactive=False))
-    final_return.append(gr.update(visible=False)) # generation button
+    final_return.append(gr.update(interactive=False)) # generation button
     final_return.append(False) # gen_stop_flag
     return final_return
 
-def handle_generation(user_data, loaded_model, image_style, image_size, prompt, 
-                      negative_prompt, sampling_steps, cfg_scale, seed):
-    
-    user_data['image_style'] = image_style 
-    user_data['image_size'] = image_size 
-    user_data['prompt'] = prompt 
-    user_data['negative_prompt'] = negative_prompt 
-    user_data['sampling_steps'] = sampling_steps 
-    user_data['cfg_scale'] = cfg_scale 
-    user_data['seed'] = seed 
+def handle_generation(user_data, loaded_model, gen_stop_flag):
     
     early_return = [user_data]
-    for i in range(5):
+    for i in range(7):
         early_return.append(gr.update())
+        
+    if gen_stop_flag:
+        early_return.append(False)
+        return early_return
     
     MYLOGGER.info(f"---- USER {user_data['username']}: ---- handle generation")
     
     username = user_data['username']
     
-    cuda_id, device_id = GPU_monitor.get_free_device(username)
-    trigger_warning = True
-    
-    while cuda_id is None and device_id is None:
-        if trigger_warning:
-            trigger_warning = False
-            MYLOGGER.info(f"---- USER {username}: ---- waiting for GPU")
-            gr.Warning("No GPU with enough free memory for the model. "\
-                        "Waiting for idle GPU. Please don't leave.")
+    try:
         cuda_id, device_id = GPU_monitor.get_free_device(username)
-    
-    before = (torch.cuda.get_device_properties(device_id).total_memory - \
-             torch.cuda.memory_allocated(device_id)) / (1024 ** 2)
+        trigger_warning = True
+        
+        while cuda_id is None and device_id is None:
+            if trigger_warning:
+                trigger_warning = False
+                MYLOGGER.info(f"---- USER {username}: ---- waiting for GPU")
+                gr.Warning("No GPU with enough free memory for the model. "\
+                            "Waiting for idle GPU. Please don't leave.")
+            cuda_id, device_id = GPU_monitor.get_free_device(username)
+        
+        before = (torch.cuda.get_device_properties(device_id).total_memory - \
+                torch.cuda.memory_allocated(device_id)) / (1024 ** 2)
 
-    loaded_model.to(f'cuda:{device_id}')
-    
-    after = (torch.cuda.get_device_properties(device_id).total_memory - \
-            torch.cuda.memory_allocated(device_id)) / (1024 ** 2)
-    
-    MYLOGGER.info(f"---- USER {username}: ---- model being put on cuda" \
-                                        f" {cuda_id}, device {device_id}")
-    MYLOGGER.info(f"---- USER {username}: ---- model usage of GPU: {(before - after):2f} MB")
-    
-    image = loaded_model(
-        prompt=user_data['prompt'],
-        negative_prompt=user_data['negative_prompt'], 
-        num_inference_steps=user_data['sampling_steps'], # sampling steps
-        guidance_scale=user_data['cfg_scale'], # cfg
-        generator=torch.manual_seed(user_data['seed']),
-    )
-    
-    nsfw_detected = image['nsfw_content_detected'][0]
-    
-    image = image.images[0] # PIL.Image.Image
+        loaded_model.to(f'cuda:{device_id}')
+        
+        after = (torch.cuda.get_device_properties(device_id).total_memory - \
+                torch.cuda.memory_allocated(device_id)) / (1024 ** 2)
+        
+        MYLOGGER.info(f"---- USER {username}: ---- model being put on cuda" \
+                                            f" {cuda_id}, device {device_id}")
+        MYLOGGER.info(f"---- USER {username}: ---- model usage of GPU: {(before - after):2f} MB")
+        
+        image = loaded_model(
+            prompt=user_data['prompt'],
+            negative_prompt=user_data['negative_prompt'], 
+            num_inference_steps=user_data['sampling_steps'], # sampling steps
+            guidance_scale=user_data['cfg_scale'], # cfg
+            generator=torch.manual_seed(user_data['seed']),
+        )
+        
+        nsfw_detected = image['nsfw_content_detected'][0]
+        
+        image = image.images[0] # PIL.Image.Image
+    except Exception:
+        GPU_monitor.release_device(device_id, username)
     
     collected = gc.collect()
+    
     print("collected before: ", collected)
-    del loaded_model
+    loaded_model.to('cpu')
     collected = gc.collect()
     print("collected mid: ", collected)
     with torch.cuda.device(device_id):
@@ -556,12 +593,21 @@ def handle_generation(user_data, loaded_model, image_style, image_size, prompt,
         if nsfw_detected:
             MYLOGGER.info(f"---- USER {username} : ---- improper prompt")
             gr.Warning("Please use proper prompt!")
+            early_return.append(loaded_model)
+            early_return.append(False)
             return early_return
     
     final_return = [user_data, image, user_data, gr.update(visible=False)]
-    for i in range(3):
-        final_return.append(gr.update(visible=True))    
     
+    MYLOGGER.info(f"---- USER {username} successfully generated image")
+    
+    final_return.append(gr.update(visible=True, interactive=False)) # save button
+    final_return.append(gr.update(visible=True)) # satisfaction
+    final_return.append(gr.update(visible=True)) # why unsatisfied
+            
+        
+    final_return.append(loaded_model)
+    final_return.append(False) # gen_stop_flag
     return final_return
 
 ################################################################################
