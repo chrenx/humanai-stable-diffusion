@@ -75,7 +75,7 @@ with gr.Blocks() as demo:
             gr.HTML("<br><br>")
             logout_button = gr.Button("Logout", 
                                       link=f"/logout?user_id={user_data.value['username']}")
-            debug = gr.Button("debug", visible=True)
+            debug = gr.Button("debug", visible=False)
 
         with gr.Column(scale=1):
             image_output = gr.Image(label="Output Image", interactive=False)
@@ -129,10 +129,10 @@ with open(config.auth_message_fpath, 'r') as f:
     auth_message = f.read()
 
 concurrency_limit = NUM_GPU * NUM_USER_PER_GPU
-app, _, _ = demo.queue(max_size=1, default_concurrency_limit=concurrency_limit).launch(
+app, _, _ = demo.queue(default_concurrency_limit=concurrency_limit).launch(
     share=True,
     auth=get_auth_cred,
     auth_message=auth_message,
-    # server_name="0.0.0.0",
-    # server_port=7860,
+    server_name="0.0.0.0",
+    server_port=7860,
 )

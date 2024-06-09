@@ -602,8 +602,8 @@ def handle_generation(user_data, loaded_model, gen_stop_flag):
     MYLOGGER.info(f"---- USER {username} successfully generated image")
     
     final_return.append(gr.update(visible=True, interactive=False)) # save button
-    final_return.append(gr.update(visible=True)) # satisfaction
-    final_return.append(gr.update(visible=True)) # why unsatisfied
+    final_return.append(gr.update(visible=True, interactive=True)) # satisfaction
+    final_return.append(gr.update(visible=True, interactive=True)) # why unsatisfied
             
         
     final_return.append(loaded_model)
