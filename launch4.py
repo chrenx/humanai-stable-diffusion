@@ -13,6 +13,7 @@ from config import IMAGE_STYLE_CHOICES, IMAGE_SIZE_CHOICES, \
 from utils.launch_utils4 import create_greeting, get_cuda_info, get_auth_cred, \
                                 debug_fn, handle_save, pre_gen_ui, post_gen_ui, \
                                 handle_init_model, handle_generation, satisfaction_slider_change, \
+                                disable_generate, enable_group_ui, \
                                 MYLOGGER
                                 
         
@@ -88,8 +89,11 @@ with gr.Blocks() as demo:
             info_output = gr.Json(label="Generation Info")
             
     ########################################################################
+    
+    group_ui = [image_style, image_size, prompt, negative_prompt, cfg_scale, seed]
             
-    image_style.change(handle_init_model, inputs=[user_data, image_style, image_size], 
+    image_style.change(fn=disable_generate, outputs=[generate_button])\
+                .then(handle_init_model, inputs=[user_data, image_style, image_size], 
                                            outputs=[image_style, loaded_model, generate_button],
                                            show_progress=True, queue=False, trigger_mode="once")
     
@@ -106,6 +110,7 @@ with gr.Blocks() as demo:
                                     save_button, satisfaction, why_unsatisfied, loaded_model, gen_stop_flag],
                             show_progress=True, queue=True, trigger_mode="once",
                             concurrency_limit=NUM_GPU * NUM_USER_PER_GPU)\
+                    .then(fn=enable_group_ui, inputs=[gen_stop_flag], outputs=group_ui+[generate_button, gen_stop_flag])
                     # .then(fn=post_gen_ui,
                     #         inputs=[loaded_model],
                     #         outputs=[loaded_model, gen_stop_flag], queue=False, trigger_mode="once")
@@ -114,7 +119,7 @@ with gr.Blocks() as demo:
                       inputs=[user_data, satisfaction, why_unsatisfied],
                       outputs=[user_data, satisfaction, why_unsatisfied, 
                                save_button, generate_button, image_style, image_size, prompt, 
-                                    negative_prompt, sampling_steps, cfg_scale, seed],
+                                    negative_prompt, sampling_steps, cfg_scale, seed, info_output],
                       queue=False, trigger_mode="once", show_progress=False)
     
     debug.click(fn=debug_fn, inputs=[user_data, loaded_model])

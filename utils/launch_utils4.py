@@ -31,10 +31,57 @@ warnings.filterwarnings("ignore")
 logger.basicConfig(level=os.environ.get("LOGLEVEL", "INFO"))
 MYLOGGER = logger.getLogger()
 
+# class GPUMonitor:
+#     def __init__(self):
+#         print('GPU monitor created ...')
+#         self.allocation = {}
+        
+#         cuda_visible_devices = os.environ.get('CUDA_VISIBLE_DEVICES')
+
+#         if cuda_visible_devices:
+#             cuda_ids = cuda_visible_devices.split(',')
+#             for i, cuda_id in enumerate(cuda_ids):
+#                 self.allocation[int(i)] = {
+#                     "users": [],
+#                     "cuda_id": int(cuda_id)
+#                 }
+#         else:
+#             for i in range(torch.cuda.device_count()): 
+#                 self.allocation[int(i)] = {
+#                     "users": [],
+#                     "cuda_id": int(i)
+#                 }
+    
+#     def get_free_device(self, username):
+#         # if username == "2":
+#         #     cuda_id, device_id = 7, 1
+#         #     self.allocation[1]["users"].append(username)
+#         #     return cuda_id, device_id
+        
+#         for device_id, info in self.allocation.items():
+#             if len(info["users"]) < NUM_USER_PER_GPU: #! only allow # users on one GPU
+#                 free_memory = self._get_freememory(device_id)
+#                 if free_memory < FREE_MEMORY_THRESHOLD:
+#                     continue
+#                 self.allocation[device_id]["users"].append(username)
+#                 cuda_id = info['cuda_id']
+#                 MYLOGGER.info(f"---- GPU Monitor gives USER {username} cuda {cuda_id}, "\
+#                               f"device {device_id}")
+#                 return cuda_id, device_id
+#         return None, None
+    
+#     def release_device(self, device_id, username):
+#         MYLOGGER.info(f"---- USER {username} released from device {device_id}")
+#         self.allocation[device_id]["users"].remove(username)
+        
+#     def _get_freememory(self, device_id):
+#         return torch.cuda.get_device_properties(device_id).total_memory - \
+#                torch.cuda.memory_allocated(device_id)
+
 class GPUMonitor:
     def __init__(self):
         print('GPU monitor created ...')
-        self.allocation = {}
+        self.allocation = {} # {'device id': {using, cuda_id}}
         
         cuda_visible_devices = os.environ.get('CUDA_VISIBLE_DEVICES')
 
@@ -42,37 +89,35 @@ class GPUMonitor:
             cuda_ids = cuda_visible_devices.split(',')
             for i, cuda_id in enumerate(cuda_ids):
                 self.allocation[int(i)] = {
-                    "users": [],
+                    "using": False,
                     "cuda_id": int(cuda_id)
                 }
         else:
             for i in range(torch.cuda.device_count()): 
                 self.allocation[int(i)] = {
-                    "users": [],
+                    "using": False,
                     "cuda_id": int(i)
                 }
     
     def get_free_device(self, username):
-        # if username == "2":
-        #     cuda_id, device_id = 7, 1
-        #     self.allocation[1]["users"].append(username)
-        #     return cuda_id, device_id
         
         for device_id, info in self.allocation.items():
-            if len(info["users"]) < NUM_USER_PER_GPU: #! only allow # users on one GPU
-                free_memory = self._get_freememory(device_id)
-                if free_memory < FREE_MEMORY_THRESHOLD:
-                    continue
-                self.allocation[device_id]["users"].append(username)
-                cuda_id = info['cuda_id']
-                MYLOGGER.info(f"---- GPU Monitor gives USER {username} cuda {cuda_id}, "\
-                              f"device {device_id}")
-                return cuda_id, device_id
+            if info['using']:
+                continue
+            
+            free_memory = self._get_freememory(device_id)
+            if free_memory < FREE_MEMORY_THRESHOLD:
+                continue
+            self.allocation[device_id]["using"] = True
+            cuda_id = info['cuda_id']
+            MYLOGGER.info(f"---- GPU Monitor gives USER {username} cuda {cuda_id}, "\
+                            f"device {device_id}")
+            return cuda_id, device_id
         return None, None
     
     def release_device(self, device_id, username):
         MYLOGGER.info(f"---- USER {username} released from device {device_id}")
-        self.allocation[device_id]["users"].remove(username)
+        self.allocation[device_id]["using"] = False
         
     def _get_freememory(self, device_id):
         return torch.cuda.get_device_properties(device_id).total_memory - \
@@ -308,6 +353,7 @@ def handle_save(user_data, satisfaction, why_unsatisfied):
     ]
     for _ in range(7):
         final_return.append(gr.update(interactive=True))
+    final_return.append(user_data)
     return final_return
         
 def handle_logout(user_data, demo):
@@ -467,11 +513,7 @@ def post_gen_ui(loaded_model):
         loaded_model.to('cpu')
     return loaded_model
 
-
-
-def handle_init_model(user_data, image_style, image_size):
-    MYLOGGER.info(f"---- USER {user_data['username']}: ---- initialize {image_style}")
-    
+def helper_init_model(image_style, image_size):
     safetensor_path = MODEL_NAME_PATH_MAP[image_style]
     
     safety_checker = StableDiffusionSafetyChecker\
@@ -484,6 +526,16 @@ def handle_init_model(user_data, image_style, image_size):
                                                             safety_checker=safety_checker,
                                                             feature_extractor=feature_extractor,
                                                             image_size=image_size)
+    return loaded_model
+
+def disable_generate():
+    return gr.update(interactive=False)
+    
+def handle_init_model(user_data, image_style, image_size):
+    MYLOGGER.info(f"---- USER {user_data['username']}: ---- initialize {image_style}")
+    
+    loaded_model = helper_init_model(image_style, image_size)
+    
     return gr.update(), loaded_model, gr.update(interactive=True)
 
 def pre_gen_ui(user_data, image_style, image_size, prompt, negative_prompt, 
@@ -523,14 +575,31 @@ def pre_gen_ui(user_data, image_style, image_size, prompt, negative_prompt,
     final_return.append(False) # gen_stop_flag
     return final_return
 
+def enable_group_ui(gen_stop_flag):
+    if gen_stop_flag:
+        group_ui = []
+        for _ in range(7):
+            group_ui.append(gr.update(visible=True, interactive=True))
+        group_ui.append(False)
+        
+        return group_ui
+    else:
+        group_ui = []
+        for _ in range(7):
+            group_ui.append(gr.update())
+        group_ui.append(False)
+        
+        return group_ui
+
 def handle_generation(user_data, loaded_model, gen_stop_flag):
     
     early_return = [user_data]
-    for i in range(7):
+    for i in range(6):
         early_return.append(gr.update())
-        
+    early_return.append(loaded_model)
+    
     if gen_stop_flag:
-        early_return.append(False)
+        early_return.append(True)
         return early_return
     
     MYLOGGER.info(f"---- USER {user_data['username']}: ---- handle generation")
@@ -561,40 +630,97 @@ def handle_generation(user_data, loaded_model, gen_stop_flag):
                                             f" {cuda_id}, device {device_id}")
         MYLOGGER.info(f"---- USER {username}: ---- model usage of GPU: {(before - after):2f} MB")
         
-        image = loaded_model(
-            prompt=user_data['prompt'],
-            negative_prompt=user_data['negative_prompt'], 
-            num_inference_steps=user_data['sampling_steps'], # sampling steps
-            guidance_scale=user_data['cfg_scale'], # cfg
-            generator=torch.manual_seed(user_data['seed']),
-        )
+        try:
+            image = loaded_model(
+                prompt=user_data['prompt'],
+                negative_prompt=user_data['negative_prompt'], 
+                num_inference_steps=user_data['sampling_steps'], # sampling steps
+                guidance_scale=user_data['cfg_scale'], # cfg
+                generator=torch.manual_seed(user_data['seed']),
+            )
+        except Exception:
+            collected = gc.collect()
+            print("collected before: ", collected)
+            # loaded_model.to('cpu')
+            del loaded_model
+            collected = gc.collect()
+            print("collected mid: ", collected)
+            with torch.cuda.device(device_id):
+                torch.cuda.empty_cache()   
+            collected = gc.collect()
+            print("collected after: ", collected)
+            loaded_model = helper_init_model(user_data['image_style'], user_data['image_size'])
+            gr.Error("Please try to regenerate image")
+            GPU_monitor.release_device(device_id, username)
+            early_return[-1] = loaded_model
+            early_return.append(True)
+            return early_return
         
         nsfw_detected = image['nsfw_content_detected'][0]
         
         image = image.images[0] # PIL.Image.Image
-    except Exception:
+    except Exception as e:
+        print("ERROR message -----------------------------------------")
+        print(e)
+        print("GPU error here...")
+        collected = gc.collect()
+        print("collected before: ", collected)
+        # loaded_model.to('cpu')
+        del loaded_model
+        collected = gc.collect()
+        print("collected mid: ", collected)
+        with torch.cuda.device(device_id):
+            torch.cuda.empty_cache()   
+        collected = gc.collect()
+        print("collected after: ", collected)
+        loaded_model = helper_init_model(user_data['image_style'], user_data['image_size'])
         GPU_monitor.release_device(device_id, username)
+        early_return[-1] = loaded_model
+        early_return.append(True)
+        GPU_monitor.release_device(device_id, username)
+        return early_return
+        # GPU_monitor.release_device(device_id, username)
     
     collected = gc.collect()
     
     print("collected before: ", collected)
-    loaded_model.to('cpu')
+    # loaded_model.to('cpu')
+    del loaded_model
     collected = gc.collect()
     print("collected mid: ", collected)
     with torch.cuda.device(device_id):
         torch.cuda.empty_cache()   
     collected = gc.collect()
     print("collected after: ", collected)
+    loaded_model = helper_init_model(user_data['image_style'], user_data['image_size'])
     
-    GPU_monitor.release_device(device_id, username)
+    try:
+        GPU_monitor.release_device(device_id, username)
+    except Exception:
+        print(f"------ GPU releasing error here USER {username} device {device_id}----")
+        
     ############################################################################
     
     if SAFETY_CHECK:
         if nsfw_detected:
             MYLOGGER.info(f"---- USER {username} : ---- improper prompt")
             gr.Warning("Please use proper prompt!")
-            early_return.append(loaded_model)
-            early_return.append(False)
+            early_return[3] = gr.update(interactive=True) # generate button
+            
+            collected = gc.collect()
+            print("collected before: ", collected)
+            # loaded_model.to('cpu')
+            del loaded_model
+            collected = gc.collect()
+            print("collected mid: ", collected)
+            with torch.cuda.device(device_id):
+                torch.cuda.empty_cache()   
+            collected = gc.collect()
+            print("collected after: ", collected)
+            loaded_model = helper_init_model(user_data['image_style'], user_data['image_size'])
+            GPU_monitor.release_device(device_id, username)
+            early_return[-1] = loaded_model
+            early_return.append(True) # gen stop flag
             return early_return
     
     final_return = [user_data, image, user_data, gr.update(visible=False)]
