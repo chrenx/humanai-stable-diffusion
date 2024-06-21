@@ -1,63 +1,15 @@
-2024-06-18-17:01:45.351 INFO ----------------------------
-2024-06-18-17:01:45.576 INFO HTTP Request: GET https://checkip.amazonaws.com/ "HTTP/1.1 200 "
-2024-06-18-17:01:45.696 INFO HTTP Request: GET http://localhost:7860/startup-events "HTTP/1.1 200 OK"
-2024-06-18-17:01:45.722 INFO HTTP Request: HEAD http://localhost:7860/ "HTTP/1.1 200 OK"
-2024-06-18-17:01:45.726 INFO HTTP Request: GET https://api.gradio.app/pkg-version "HTTP/1.1 200 OK"
-2024-06-18-17:01:45.998 INFO HTTP Request: GET https://api.gradio.app/v2/tunnel-request "HTTP/1.1 200 OK"
-2024-06-18-17:02:18.546 INFO >>>>>>>> USER admin1 Login.
-2024-06-18-17:02:38.74 INFO >>>>>>>> USER 1 Login.
-2024-06-18-17:02:51.905 INFO ---- GPU Monitor gives USER 1 cuda 1, device 0, remaining percentage: 0.9850819905598959
-2024-06-18-17:04:14.681 INFO >>>>>>>> USER 1 Login.
-2024-06-18-17:04:24.230 INFO ---- GPU Monitor gives USER 1 cuda 1, device 0, remaining percentage: 0.7613677978515625
-2024-06-18-17:04:26.29 INFO ---- USER 1: ---- handle generation
-2024-06-18-17:04:31.151 INFO ---- USER 1 successfully generated image
-2024-06-18-17:05:14.611 INFO ----------------------------
-2024-06-18-17:05:14.895 INFO HTTP Request: GET https://checkip.amazonaws.com/ "HTTP/1.1 200 "
-2024-06-18-17:05:14.935 INFO HTTP Request: GET http://localhost:7860/startup-events "HTTP/1.1 200 OK"
-2024-06-18-17:05:14.959 INFO HTTP Request: HEAD http://localhost:7860/ "HTTP/1.1 200 OK"
-2024-06-18-17:05:14.962 INFO HTTP Request: GET https://api.gradio.app/pkg-version "HTTP/1.1 200 OK"
-2024-06-18-17:05:15.226 INFO HTTP Request: GET https://api.gradio.app/v2/tunnel-request "HTTP/1.1 200 OK"
-2024-06-18-17:05:23.618 INFO >>>>>>>> USER 1 Login.
-2024-06-18-17:05:34.941 INFO ---- GPU Monitor gives USER 1 cuda 1, device 0, remaining percentage: 0.9850819905598959
-2024-06-18-17:05:53.414 INFO >>>>>>>> USER 1 Login.
-2024-06-18-17:06:04.742 INFO ---- GPU Monitor gives USER 1 cuda 1, device 0, remaining percentage: 0.7601470947265625
-2024-06-18-17:06:06.289 INFO ---- USER 1: ---- handle generation
-2024-06-18-17:06:11.542 INFO ---- USER 1 successfully generated image
-2024-06-18-17:06:33.54 INFO >>>>>>>> USER 2 Login.
-2024-06-18-17:06:42.548 INFO ---- GPU Monitor gives USER 2 cuda 1, device 0, remaining percentage: 0.7574615478515625
-2024-06-18-17:06:44.580 INFO ---- USER 2: ---- handle generation
-2024-06-18-17:06:49.675 INFO ---- USER 2 successfully generated image
-2024-06-18-17:06:54.950 INFO >>>>>>>> USER 2 Login.
-2024-06-18-17:07:06.494 INFO ---- GPU Monitor gives USER 2 cuda 1, device 0, remaining percentage: 0.7574615478515625
-2024-06-18-21:43:59.493 INFO ----------------------------
-2024-06-18-21:43:59.787 INFO HTTP Request: GET https://checkip.amazonaws.com/ "HTTP/1.1 200 "
-2024-06-18-21:43:59.827 INFO HTTP Request: GET http://localhost:7860/startup-events "HTTP/1.1 200 OK"
-2024-06-18-21:43:59.849 INFO HTTP Request: HEAD http://localhost:7860/ "HTTP/1.1 200 OK"
-2024-06-18-21:43:59.855 INFO HTTP Request: GET https://api.gradio.app/pkg-version "HTTP/1.1 200 OK"
-2024-06-18-21:44:00.123 INFO HTTP Request: GET https://api.gradio.app/v2/tunnel-request "HTTP/1.1 200 OK"
-2024-06-18-21:44:10.804 INFO >>>>>>>> USER 1 Login.
-2024-06-18-21:44:22.471 INFO ---- GPU Monitor gives USER 1 cuda 1, device 0, remaining percentage: 0.9850819905598959
-2024-06-18-21:53:01.656 INFO ----------------------------
-2024-06-18-21:53:02.30 INFO HTTP Request: GET https://checkip.amazonaws.com/ "HTTP/1.1 200 "
-2024-06-18-21:53:02.118 INFO HTTP Request: GET https://api.gradio.app/pkg-version "HTTP/1.1 200 OK"
-2024-06-18-21:53:02.154 INFO HTTP Request: GET http://localhost:7860/startup-events "HTTP/1.1 200 OK"
-2024-06-18-21:53:02.179 INFO HTTP Request: HEAD http://localhost:7860/ "HTTP/1.1 200 OK"
-2024-06-18-21:53:02.449 INFO HTTP Request: GET https://api.gradio.app/v2/tunnel-request "HTTP/1.1 200 OK"
-2024-06-18-21:53:11.703 INFO >>>>>>>> USER 1 Login.
-2024-06-18-21:53:24.955 INFO ---- GPU Monitor gives USER 1 cuda 1, device 0, remaining percentage: 0.9850819905598959
-2024-06-18-21:54:42.929 INFO ----------------------------
-2024-06-18-21:54:43.290 INFO HTTP Request: GET https://checkip.amazonaws.com/ "HTTP/1.1 200 "
-2024-06-18-21:54:43.407 INFO HTTP Request: GET https://api.gradio.app/pkg-version "HTTP/1.1 200 OK"
-2024-06-18-21:54:43.450 INFO HTTP Request: GET http://localhost:7860/startup-events "HTTP/1.1 200 OK"
-2024-06-18-21:54:43.477 INFO HTTP Request: HEAD http://localhost:7860/ "HTTP/1.1 200 OK"
-2024-06-18-21:54:43.747 INFO HTTP Request: GET https://api.gradio.app/v2/tunnel-request "HTTP/1.1 200 OK"
-2024-06-18-21:54:50.987 INFO >>>>>>>> USER 1 Login.
-2024-06-18-21:55:01.407 INFO ---- GPU Monitor gives USER 1 cuda 1, device 0, remaining percentage: 0.9850819905598959
-2024-06-18-21:57:41.77 INFO ----------------------------
-2024-06-18-21:57:41.291 INFO HTTP Request: GET https://checkip.amazonaws.com/ "HTTP/1.1 200 "
-2024-06-18-21:57:41.389 INFO HTTP Request: GET http://localhost:7860/startup-events "HTTP/1.1 200 OK"
-2024-06-18-21:57:41.407 INFO HTTP Request: HEAD http://localhost:7860/ "HTTP/1.1 200 OK"
-2024-06-18-21:57:41.420 INFO HTTP Request: GET https://api.gradio.app/pkg-version "HTTP/1.1 200 OK"
-2024-06-18-21:57:41.676 INFO HTTP Request: GET https://api.gradio.app/v2/tunnel-request "HTTP/1.1 200 OK"
-2024-06-18-21:57:45.577 INFO >>>>>>>> USER 1 Login.
-2024-06-18-21:57:55.783 INFO >>>>>>>> USER 1 Login.
+2024-06-21-14:17:40.775 INFO ----------------------------
+2024-06-21-14:17:40.998 INFO HTTP Request: GET https://checkip.amazonaws.com/ "HTTP/1.1 200 "
+2024-06-21-14:17:41.115 INFO HTTP Request: GET http://localhost:7860/startup-events "HTTP/1.1 200 OK"
+2024-06-21-14:17:41.138 INFO HTTP Request: HEAD http://localhost:7860/ "HTTP/1.1 200 OK"
+2024-06-21-14:17:41.149 INFO HTTP Request: GET https://api.gradio.app/pkg-version "HTTP/1.1 200 OK"
+2024-06-21-14:17:41.405 INFO HTTP Request: GET https://api.gradio.app/v2/tunnel-request "HTTP/1.1 200 OK"
+2024-06-21-14:19:10.823 INFO >>>>>>>> USER 1 Login.
+2024-06-21-14:19:35.972 INFO >>>>>>>> USER 1 Login.
+2024-06-21-14:21:21.885 INFO ----------------------------
+2024-06-21-14:21:22.109 INFO HTTP Request: GET https://checkip.amazonaws.com/ "HTTP/1.1 200 "
+2024-06-21-14:21:22.212 INFO HTTP Request: GET http://localhost:7860/startup-events "HTTP/1.1 200 OK"
+2024-06-21-14:21:22.236 INFO HTTP Request: HEAD http://localhost:7860/ "HTTP/1.1 200 OK"
+2024-06-21-14:21:22.243 INFO HTTP Request: GET https://api.gradio.app/pkg-version "HTTP/1.1 200 OK"
+2024-06-21-14:21:22.499 INFO HTTP Request: GET https://api.gradio.app/v2/tunnel-request "HTTP/1.1 200 OK"
+2024-06-21-14:21:32.657 INFO >>>>>>>> USER 1 Login.

@@ -77,7 +77,7 @@ with gr.Blocks() as demo:
             gr.HTML("<br><br>")
             logout_button = gr.Button("Logout", 
                                       link=f"/logout?user_id={user_data.value['username']}")
-            debug = gr.Button("debug", visible=True)
+            debug = gr.Button("debug", visible=False)
 
         with gr.Column(scale=1):
             image_output = gr.Image(label="Output Image", interactive=False)
@@ -137,7 +137,7 @@ app, _, _ = demo.queue().launch(
     auth=get_auth_cred,
     auth_message=auth_message,
     max_threads=CONCURRENCY_LIMIT,
-    # server_name="0.0.0.0",
-    # server_port=7860,
+    server_name="0.0.0.0",
+    server_port=7860,
 )
 
