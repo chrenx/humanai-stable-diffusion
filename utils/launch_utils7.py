@@ -11,9 +11,9 @@ from transformers import CLIPImageProcessor
 from datetime import datetime
 from pynvml import *
 
-import config
 from config import MODEL_NAME_PATH_MAP, CRED_FPATH, SAFETY_CHECK, \
-                   FREE_MEMORY_THRESHOLD, NUM_USER_PER_GPU, IMAGE_STYLE_CHOICES
+                   IMAGE_STYLE_CHOICES, INITIAL_IMAGE_SIZE, FREE_MEMORY_THRESHOLD, \
+                   USER_DATA_STORE_FPATH, PRELOAD_MODELS
 
 import nltk
 from nltk.tokenize import word_tokenize
@@ -32,79 +32,16 @@ warnings.filterwarnings("ignore")
 logger.basicConfig(level=os.environ.get("LOGLEVEL", "INFO"))
 MYLOGGER = logger.getLogger()
 
-
-def byte2mb(bytes_value):
-    # 1 Megabyte (MB) is 1,048,576 Bytes (1024 * 1024)
-    megabytes_value = bytes_value / (1024 * 1024)
-    return megabytes_value
-
-
-class GPUMonitor:
-    def __init__(self):
-        print('GPU monitor created ...')
-        self.allocation = {} # {'device id': {using, cuda_id}}
-        
-        cuda_visible_devices = os.environ.get('CUDA_VISIBLE_DEVICES')
-
-        if cuda_visible_devices:
-            cuda_ids = cuda_visible_devices.split(',')
-            for i, cuda_id in enumerate(cuda_ids):
-                self.allocation[int(i)] = {
-                    "cuda_id": int(cuda_id)
-                }
-        else:
-            for i in range(torch.cuda.device_count()): 
-                self.allocation[int(i)] = {
-                    "cuda_id": int(i)
-                }
-    
-    def get_device_id(self, username):
-        all_cuda_remain_avg = 0
-        
-        devices = list(self.allocation.items())
-        random.shuffle(devices)  # Randomly shuffle the devices
-        
-        for device_id, info in devices:
-        # for device_id, info in self.allocation.items():
-            remain_mem = self._get_freememory(info['cuda_id'])
-            if remain_mem <= FREE_MEMORY_THRESHOLD: 
-                all_cuda_remain_avg += remain_mem
-                continue
-            
-            cuda_id = info['cuda_id']
-            MYLOGGER.info(f"---- GPU Monitor gives USER {username} cuda {cuda_id}, "\
-                            f"device {device_id}, remaining : {byte2mb(remain_mem)} MB")
-            return device_id, info['cuda_id'], remain_mem
-        
-        all_cuda_remain_avg /= len(self.allocation.keys())
-        return None, None, byte2mb(all_cuda_remain_avg)
-        
-    def _get_freememory(self, cuda_id):
-        nvmlInit()
-        h = nvmlDeviceGetHandleByIndex(cuda_id)
-        info = nvmlDeviceGetMemoryInfo(h)
-        return info.free # bytes
-        
-
-GPU_monitor = GPUMonitor() 
-
 ################################################################################
 
 def count_tokens(input_string):
     tokens = word_tokenize(input_string)
     return len(tokens)
 
-def debug_fn(user_data, loaded_model):
+def debug_fn(user_data):
     gr.Warning("DEBUGGING ...")
     print("\n================================")
     print('user_data: ', user_data)
-    print("loaded_model: ")
-    print(loaded_model)
-    for device_id, info in GPU_monitor.allocation.items(): 
-        nvmlInit()
-        h = nvmlDeviceGetHandleByIndex(info['cuda_id'])
-        info = nvmlDeviceGetMemoryInfo(h)
-        print(f"cuda {device_id} remain: {byte2mb(info.free)} MB")
     print("================================\n")
 
 def get_auth_cred(username, password):
@@ -158,7 +95,7 @@ def handle_save(user_data, satisfaction, why_unsatisfied):
     user_data['why_unsatisfied'] = why_unsatisfied
     
     #********** save to csv ***************************************************
-    store_fpath = config.user_data_store_fpath
+    store_fpath = USER_DATA_STORE_FPATH
     # Fetch the last timestamp from the CSV file if it exists
     cur_time = datetime.now()
     cur_time = '{:%Y_%m_%d_%H:%M:%S}.{:02.0f}'.format(cur_time, cur_time.microsecond / 10000.0)
@@ -213,28 +150,17 @@ def handle_save(user_data, satisfaction, why_unsatisfied):
         gr.update(visible=False, value=0, interactive=True), # satisfaction
         gr.update(visible=False, value=""), # why_unsatisfied
         gr.update(visible=False, interactive=False), # save_button
-        gr.update(visible=True, interactive=True), # generate_button
     ]
-    for _ in range(7):
-        final_return.append(gr.update(interactive=True))
+    
+    for _ in IMAGE_STYLE_CHOICES:
+        final_return.append(gr.update(visible=True, interactive=True))
+    
+    for _ in range(6): # group ui
+        final_return.append(gr.update(visible=True, interactive=True))
     final_return.append(info_output)
+    
     return final_return
         
-def helper_init_model(image_style, image_size):
-    safetensor_path = MODEL_NAME_PATH_MAP[image_style]
-    
-    safety_checker = StableDiffusionSafetyChecker\
-                        .from_pretrained("CompVis/stable-diffusion-safety-checker")
-    
-    feature_extractor = CLIPImageProcessor.from_pretrained("openai/clip-vit-base-patch32")
-    
-    loaded_model = StableDiffusionPipeline.from_single_file(safetensor_path,
-                                                            extract_ema=True,
-                                                            safety_checker=safety_checker,
-                                                            feature_extractor=feature_extractor,
-                                                            image_size=image_size)
-    return loaded_model
-
 def update_input(user_data, image_style, image_size, prompt, negative_prompt, 
                  sampling_steps, cfg_scale, seed):
     user_data['image_style'] = image_style 
@@ -252,67 +178,13 @@ def disable_component(*argv):
         final_res.append(gr.update(interactive=False))
     return final_res
 
-def enable_component(*argv):
-    final_res = []
-    for arg in argv:
-        final_res.append(gr.update(interactive=True))
-    return final_res
-
-def offload_model(username, loaded_model, device_id):
-    if loaded_model is None:
-        return
-    try:
-        # loaded_model.to('cpu')
-        gc.collect()
-        del loaded_model.feature_extractor, \
-            loaded_model.image_encoder, \
-            loaded_model.safety_checker, \
-            loaded_model.scheduler, \
-            loaded_model.text_encoder, \
-            loaded_model.tokenizer, \
-            loaded_model.unet, \
-            loaded_model.vae
-        torch.cuda.empty_cache()
-        del loaded_model
-        gc.collect()
-        with torch.cuda.device(device_id):
-            torch.cuda.empty_cache()   
-            gc.collect()
-        loaded_model = None
-    except Exception as e:
-        MYLOGGER.info(f"ERROR message from USER {username} ----------------- offload model")
-        MYLOGGER.info(str(e))
-
-def process_error_in_generation(username, e, loaded_model, device_id, desc=None):
-    MYLOGGER.info(f"ERROR message from USER {username} ------------- {desc}")
-    
-    MYLOGGER.info(str(e))
-    if 'out of memory' in str(e):
-        gr.Warning("GPU is busy. Please regenerate the image after we finish cleaning GPU memory.")
-    else:
-        gr.Warning("Please contact the staff. Something wrong with the server.")
-    if loaded_model is None:
-        return
-    offload_model(username, loaded_model, device_id)
-    
-def preallocate_memory(cuda_id, num_bytes):
-    # Determine the number of elements needed based on the size of float (4 bytes per float)
-    num_elements = num_bytes // 4  # Using float32 (4 bytes per element)
-    
-    # Calculate the shape of the tensor
-    # Assuming a 1D tensor for simplicity
-    tensor_shape = (num_elements,)
-    
-    with torch.cuda.device(cuda_id):
-        dummy_tensor = torch.cuda.FloatTensor(*tensor_shape)
-        dummy_tensor.fill_(0)
-    
 def handle_generation(user_data):
     
-    early_return = [] # 14 in total
+    #* Check early return ******************************************************
+    early_return = [] # 13 in total
     for i in range(5): # post_ui
         early_return.append(gr.update())
-    for i in range(7): # group ui
+    for i in range(6): # group ui
         early_return.append(gr.update(visible=True, interactive=True)) 
     early_return.append(gr.update(visible=True, interactive=True)) # generate btn
     early_return.append(gr.update(visible=True, interactive=True)) # logout btn
@@ -343,49 +215,16 @@ def handle_generation(user_data):
     except:
         gr.Warning("Please provide numeric value for seed!")
         return early_return
+    #***************************************************************************
     
     
     MYLOGGER.info(f"---- USER {user_data['username']}: ---- handle generation")
     
     username = user_data['username']
     
-    # Allocate gpu
-    gr.Info("Loading the image style ... ")
-    loaded_model = helper_init_model(user_data['image_style'], user_data['image_size'])
-    MYLOGGER.info(f"---- USER {user_data['username']}: finished cpu model")
-    
-    trigger_warning = True
-    device_id, cuda_id, cuda_usage = GPU_monitor.get_device_id(username)
-    
-    gr.Info("Waiting for idle GPU ... ")
-    while device_id is None:
-        if trigger_warning:
-            trigger_warning = False
-            MYLOGGER.info(f"---- USER {username}: ---- waiting for GPU. Avg mem remains {cuda_usage} MB")
-        device_id, cuda_id, cuda_usage = GPU_monitor.get_device_id(username)
-    
-    # # preallocate mem
-    # try:
-    #     MYLOGGER.info(f"---- USER {username}: try to preallocate "\
-    #                   f"{byte2mb(FREE_MEMORY_THRESHOLD)} MB on cuda {cuda_id}")
-    #     preallocate_memory(device_id, FREE_MEMORY_THRESHOLD)
-    # except Exception as e:
-    #     process_error_in_generation(username, e, loaded_model, device_id, desc="preallocate error")
-    #     loaded_model = None
-    #     return early_return
-        
-    # Load model to GPU
-    try:
-        gr.Info("Found GPU. Trying to load model to it ... ")
-        loaded_model.to(f"cuda:{device_id}")
-    except Exception as e:
-        process_error_in_generation(username, e, loaded_model, device_id, desc="load model to gpu")
-        loaded_model = None
-        return early_return
-    
     # Generate image
     try:
-        image_res = loaded_model(
+        image_res = PRELOAD_MODELS[user_data['image_style']](
                         prompt=user_data['prompt'],
                         negative_prompt=user_data['negative_prompt'], 
                         num_inference_steps=user_data['sampling_steps'], # sampling steps
@@ -398,12 +237,9 @@ def handle_generation(user_data):
         image = image_res.images[0] # PIL.Image.Image
         
     except Exception as e:
-        process_error_in_generation(username, e, loaded_model, device_id, desc="image generation")
-        loaded_model = None
+        MYLOGGER.info(f"ERROR message from USER {username} ------------- generate image")
+        MYLOGGER.info(str(e))
         return early_return
-    
-    offload_model(username, loaded_model, device_id)
-    loaded_model = None
     
     ############################################################################
     
@@ -422,9 +258,10 @@ def handle_generation(user_data):
     final_return.append(gr.update(visible=True, interactive=False)) # save button
     final_return.append(gr.update(visible=True, interactive=True)) # satisfaction
     final_return.append(gr.update(visible=True, interactive=True)) # why unsatisfied
-    for i in range(7): # group ui
+    for i in range(6): # group ui
         final_return.append(gr.update(visible=True, interactive=False))
-    final_return.append(gr.update(visible=True, interactive=False)) # generate btn
+    for _ in IMAGE_STYLE_CHOICES:
+        final_return.append(gr.update(visible=True, interactive=False)) # generate btn
     final_return.append(gr.update(visible=True, interactive=True)) # logout btn
     
     return final_return
