@@ -23,10 +23,38 @@ MODEL_QUEUES = {}    # key: image style, value: Queue
 MODEL_FUNCTIONS = {} # key: image style, value: generate image func
 
 # Dummy image generation functions for models
-def generate_image_model(user_data, model_id):
-    size = 100 * model_id
-    img = Image.new('RGB', (size, size), color=(data[0], data[1], data[2]))
-    return img
+def generate_image_model(user_data):
+    res = {'error': False}
+    try:
+        image_res = PRELOAD_MODELS[user_data['image_style']](
+                        prompt=user_data['prompt'],
+                        negative_prompt=user_data['negative_prompt'], 
+                        num_inference_steps=user_data['sampling_steps'], # sampling steps
+                        guidance_scale=user_data['cfg_scale'], # cfg
+                        generator=torch.manual_seed(user_data['seed']),
+                        num_images_per_prompt=4,
+                        width= user_data['image_width'], # 360,
+                        height= user_data['image_height'], # 480
+                    )
+        
+        res['nsfw0'] = image_res['nsfw_content_detected'][0]
+        res['nsfw1'] = image_res['nsfw_content_detected'][1]
+        res['nsfw2'] = image_res['nsfw_content_detected'][2]
+        res['nsfw3'] = image_res['nsfw_content_detected'][3]
+        
+        res['image0'] = image_res.images[0] # PIL.Image.Image
+        res['image1'] = image_res.images[1] # PIL.Image.Image
+        res['image2'] = image_res.images[2] # PIL.Image.Image
+        res['image3'] = image_res.images[3] # PIL.Image.Image
+
+    except Exception as e:
+        res['error'] = True
+        LOGGER.info(f"ERROR message from USER {user_data['username']} --"\
+                     "----------- generate image")
+        LOGGER.info(str(e))
+    finally:
+        torch.cuda.empty_cache()
+        return res
 
 def register_model(image_style, generate_image_function):
     MODEL_QUEUES[image_style] = Queue()
@@ -51,14 +79,18 @@ def handle_client(client_socket, addr):
 def process_queue(image_style):
     while True:
         client_socket, user_data = MODEL_QUEUES[image_style].get()
-        image = MODEL_FUNCTIONS[image_style](user_data, image_style)
+        res = MODEL_FUNCTIONS[image_style](user_data)
+        
+        # Serialize images as bytes
+        for i in range(4):
+            img_byte_arr = io.BytesIO()
+            res[f'image{i}'].save(img_byte_arr, format='PNG')
+            res[f'image{i}'] = img_byte_arr.getvalue()
 
-        img_byte_arr = io.BytesIO()
-        image.save(img_byte_arr, format='PNG')
-        img_byte_arr = img_byte_arr.getvalue()
-
-        client_socket.sendall(img_byte_arr)
-        LOGGER.info(f"Image from model {image_style} sent back to the client")
+        # Pickle the dictionary and send it back to the client
+        data = pickle.dumps(res)
+        client_socket.sendall(data)
+        LOGGER.info(f"Data sent back to the USER {user_data['username']}")
 
         client_socket.close()
         MODEL_QUEUES[image_style].task_done()
@@ -87,10 +119,10 @@ if __name__ == '__main__':
         os.remove('server.log')
 
     # Configure logging
-    LOGGER.basicConfig(level=os.environ.get("LOGLEVEL", "INFO"),
-                    filemode='a',
-                    format='%(asctime)s.%(msecs)02d %(levelname)s %(message)s',
-                    datefmt='%Y-%m-%d-%H:%M:%S',
-                    filename='server.log')
-        
+    # LOGGER.basicConfig(level=os.environ.get("LOGLEVEL", "INFO"),
+    #                 filemode='a',
+    #                 format='%(asctime)s.%(msecs)02d %(levelname)s %(message)s',
+    #                 datefmt='%Y-%m-%d-%H:%M:%S',
+    #                 filename='server.log')
+    LOGGER.basicConfig(level=os.environ.get("LOGLEVEL", "INFO"))
     main()
