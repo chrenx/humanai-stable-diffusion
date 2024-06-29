@@ -12,7 +12,7 @@ dependencies:
   - brotli-python=1.0.9=py310h6a678d5_8
   - bzip2=1.0.8=h5eee18b_6
   - ca-certificates=2024.3.11=h06a4308_0
-  - certifi=2024.2.2=pyhd8ed1ab_0
+  - certifi=2024.6.2=py310h06a4308_0
   - charset-normalizer=2.0.4=pyhd3eb1b0_0
   - comm=0.2.2=pyhd8ed1ab_0
   - cuda-cudart=11.8.89=0
@@ -53,6 +53,7 @@ dependencies:
   - libcusolver=11.4.1.48=0
   - libcusparse=11.7.5.86=0
   - libdeflate=1.17=h5eee18b_1
+  - libevent=2.1.12=hdbd6064_1
   - libffi=3.4.4=h6a678d5_1
   - libgcc-ng=13.2.0=h77fa898_7
   - libgomp=13.2.0=h77fa898_7
@@ -118,6 +119,7 @@ dependencies:
   - sympy=1.12=py310h06a4308_0
   - tbb=2021.8.0=hdb19cb5_0
   - tk=8.6.14=h39e8969_0
+  - tmux=3.4=hb25038b_0
   - torchaudio=2.3.0=py310_cu118
   - torchtriton=2.3.0=py310
   - torchvision=0.18.0=py310_cu118
@@ -211,6 +213,7 @@ dependencies:
       - pydeck==0.9.1
       - pydeprecate==0.3.1
       - pydub==0.25.1
+      - pynvml==11.5.0
       - pyparsing==3.1.2
       - python-dateutil==2.9.0.post0
       - python-dotenv==1.0.1
@@ -257,4 +260,4 @@ dependencies:
       - werkzeug==3.0.3
       - yarl==1.9.4
       - zipp==3.18.2
-# prefix: /local/disk6/chrenx/conda-env/envs/humanai
+prefix: /local/disk5/chrenx/conda-env/envs/humanai

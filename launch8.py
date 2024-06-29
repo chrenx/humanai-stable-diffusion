@@ -10,7 +10,7 @@ from tqdm import tqdm
 from config import IMAGE_STYLE_CHOICES, IMAGE_SIZE_CHOICES, \
                    INITIAL_SAMPLING_STEPS, INITIAL_CFG, INITIAL_SEED, INITIAL_IMAGE_SIZE, \
                    CONCURRENCY_LIMIT, AUTH_MSG_FPATH, MODEL_NAME_PATH_MAP, FREE_MEMORY_THRESHOLD
-from utils.launch_utils7 import create_greeting, get_cuda_info, get_auth_cred, \
+from utils.launch_utils8 import create_greeting, get_cuda_info, get_auth_cred, \
                                 debug_fn, handle_save, \
                                 handle_generation, satisfaction_slider_change, \
                                 disable_component, update_input, \
@@ -45,7 +45,7 @@ with gr.Blocks() as demo:
     with gr.Row():
         login_message = gr.Markdown(value="Not logged in")
     with gr.Row():
-        with gr.Column(scale=1):
+        with gr.Column(scale=1) as input_col:
             image_size = gr.Dropdown(label="Image Resolution (currently only support 512)",
                                         choices=IMAGE_SIZE_CHOICES, value=512)
             prompt = gr.Textbox(label="Prompt", lines=2, max_lines=3, 
@@ -137,7 +137,7 @@ app, _, _ = demo.queue().launch(
     auth=get_auth_cred,
     auth_message=auth_message,
     max_threads=CONCURRENCY_LIMIT,
-    server_name="0.0.0.0",
-    server_port=7860,
+    # server_name="0.0.0.0",
+    # server_port=7860,
 )
 
