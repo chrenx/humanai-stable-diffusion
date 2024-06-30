@@ -51,6 +51,7 @@ def preload_all_model():
             if remain_mem < FREE_MEMORY_THRESHOLD:
                 continue            
             gpu_not_found = False
+            print(f"\n-------- load {style} to cuda: {cuda_id}\n")
             preload_model[style] = preload_model[style].to(f"cuda:{device_id}")
             break
         if gpu_not_found:
@@ -58,4 +59,3 @@ def preload_all_model():
         
     return preload_model
 
-PRELOAD_MODELS = preload_all_model()

@@ -11,25 +11,36 @@ MODEL_NAME_PATH_MAP = {
     "Oil Painting": "models/oilPaintingV10.safetensors",
     "Watercolor": "models/colorwater-v4.safetensors", 
     "MoXin (traditional Chinese Painting)": "models/MoXin-v1.safetensors",
-    "Architectural Sketch": "models/architectural_sketch.safetensors",
-    "Beautiful Outdoor Background": "models/background_beautiful_outdoor.safetensors",
-    "Fashion Cloth": "models/fashion_cloth.safetensors", 
+    "Outdoor Background": "models/background_beautiful_outdoor.safetensors",
+    "Exterior Design": "models/exterior_design.safetensors",
+    "Fashion Cloth": "models/fashion_cloth.safetensors",
+    "Fashion Sketch": "models/fashion_sketch.safetensors",
+    "Game Wallpaper": "models/game_wallpaper.safetensors",
+    "Interior Design": "models/interior_design.safetensors",
     "Pencil Sketch": "models/pencil_sketch.safetensors",
-    "Slate Pencil Mix": "models/slate_pencil_mix.safetensors",
+    "Architecture Sketch": "models/sketch_achitectural_design.safetensors",
+    "Car Sketch": "models/sketch_car.safetensors",
+    "Slate Pencil": "models/slate_pencil_mix.safetensors",
 }
 
 # IMAGE_STYLE_CHOICES = ["Oil Painting"]
 IMAGE_STYLE_CHOICES = ["Oil Painting", 
                        "Watercolor", 
-                       "MoXin (traditional Chinese Painting)",]
-                    #    "Architectural Sketch",
-                    #    "Beautiful Outdoor Background",
-                    #    "Fashion Cloth", 
-                    #    "Pencil Sketch",
-                    #    "Slate Pencil Mix"]
+                       "MoXin (traditional Chinese Painting)",     
+                       "Outdoor Background",
+                       "Exterior Design",
+                       "Fashion Cloth",
+                       "Fashion Sketch",
+                       "Game Wallpaper",
+                       "Interior Design",
+                       "Pencil Sketch",
+                       "Architecture Sketch",
+                       "Car Sketch",
+                       "Slate Pencil"]
+
 IMAGE_SIZE_CHOICES = [512]
                          
-FREE_MEMORY_THRESHOLD = 8178892800 # 7864320000 # 8864320000 # 7864320000 # 10050223473 # bytes 7340032000
+FREE_MEMORY_THRESHOLD = 9178892800 # 8178892800 # 7864320000 # 8864320000 # 7864320000 # 10050223473 # bytes 7340032000
 FREE_MEMORY_PERCENTAGE_THRESHOLD = 0.39
 
 INITIAL_SAMPLING_STEPS = 25
@@ -54,13 +65,13 @@ def get_concurrency_limit():
     else:
         for i in range(torch.cuda.device_count()):
             nvmlInit()
-            h = nvmlDeviceGetHandleByIndex(int(cuda_id))
+            h = nvmlDeviceGetHandleByIndex(int(i))
             info = nvmlDeviceGetMemoryInfo(h)
             total_free += info.total 
     return total_free // FREE_MEMORY_THRESHOLD
  
-CONCURRENCY_LIMIT = get_concurrency_limit()
-
+# CONCURRENCY_LIMIT = get_concurrency_limit()
+CONCURRENCY_LIMIT = 3
 
 # from diffusers import StableDiffusionPipeline
 # from diffusers.pipelines.stable_diffusion import StableDiffusionSafetyChecker

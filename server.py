@@ -13,7 +13,7 @@ import logging as LOGGER
 import os
 
 from config import IMAGE_STYLE_CHOICES
-from config_preload_model import PRELOAD_MODELS
+from config_preload_model import preload_all_model
 
 diffuser_logger.set_verbosity_error()
 warnings.filterwarnings("ignore")
@@ -22,30 +22,29 @@ warnings.filterwarnings("ignore")
 MODEL_QUEUES = {}    # key: image style, value: Queue
 MODEL_FUNCTIONS = {} # key: image style, value: generate image func
 
+PRELOAD_MODELS = None
+
 # Dummy image generation functions for models
 def generate_image_model(user_data):
     res = {'error': False}
     try:
+        LOGGER.info(f"GENERATE for USER {user_data['username']}")
         image_res = PRELOAD_MODELS[user_data['image_style']](
                         prompt=user_data['prompt'],
                         negative_prompt=user_data['negative_prompt'], 
                         num_inference_steps=user_data['sampling_steps'], # sampling steps
                         guidance_scale=user_data['cfg_scale'], # cfg
                         generator=torch.manual_seed(user_data['seed']),
-                        num_images_per_prompt=4,
+                        num_images_per_prompt=user_data['num_images'],
                         width= user_data['image_width'], # 360,
                         height= user_data['image_height'], # 480
                     )
         
-        res['nsfw0'] = image_res['nsfw_content_detected'][0]
-        res['nsfw1'] = image_res['nsfw_content_detected'][1]
-        res['nsfw2'] = image_res['nsfw_content_detected'][2]
-        res['nsfw3'] = image_res['nsfw_content_detected'][3]
-        
-        res['image0'] = image_res.images[0] # PIL.Image.Image
-        res['image1'] = image_res.images[1] # PIL.Image.Image
-        res['image2'] = image_res.images[2] # PIL.Image.Image
-        res['image3'] = image_res.images[3] # PIL.Image.Image
+        # min 1, max 4
+        res['num_images'] = len(image_res.images)
+        for i in range(res['num_images']):
+            res[f"nsfw{i}"] = image_res['nsfw_content_detected'][i]
+            res[f"image{i}"] = image_res.images[i] # PIL.Image.Image
 
     except Exception as e:
         res['error'] = True
@@ -81,11 +80,12 @@ def process_queue(image_style):
         client_socket, user_data = MODEL_QUEUES[image_style].get()
         res = MODEL_FUNCTIONS[image_style](user_data)
         
-        # Serialize images as bytes
-        for i in range(4):
-            img_byte_arr = io.BytesIO()
-            res[f'image{i}'].save(img_byte_arr, format='PNG')
-            res[f'image{i}'] = img_byte_arr.getvalue()
+        if not res['error']:
+            # Serialize images as bytes
+            for i in range(res['num_images']):
+                img_byte_arr = io.BytesIO()
+                res[f'image{i}'].save(img_byte_arr, format='PNG')
+                res[f'image{i}'] = img_byte_arr.getvalue()
 
         # Pickle the dictionary and send it back to the client
         data = pickle.dumps(res)
@@ -118,6 +118,8 @@ if __name__ == '__main__':
         # Remove the file
         os.remove('server.log')
 
+    PRELOAD_MODELS = preload_all_model()
+    
     # Configure logging
     # LOGGER.basicConfig(level=os.environ.get("LOGLEVEL", "INFO"),
     #                 filemode='a',

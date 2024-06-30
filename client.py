@@ -10,7 +10,7 @@ from tqdm import tqdm
 from config import IMAGE_STYLE_CHOICES, IMAGE_SIZE_CHOICES, \
                    INITIAL_SAMPLING_STEPS, INITIAL_CFG, INITIAL_SEED, INITIAL_IMAGE_SIZE, \
                    CONCURRENCY_LIMIT, AUTH_MSG_FPATH, MODEL_NAME_PATH_MAP, FREE_MEMORY_THRESHOLD
-from utils.launch_utils8 import create_greeting, get_cuda_info, get_auth_cred, \
+from utils.client_util import create_greeting, get_cuda_info, get_auth_cred, \
                                 debug_fn, handle_save, \
                                 handle_generation, satisfaction_slider_change, \
                                 disable_component, update_input, \
@@ -22,6 +22,16 @@ MYLOGGER.setLevel(logger.INFO)
 app = FastAPI()
 
 MYLOGGER.info(f"*********** CONCURRENCY_LIMIT {CONCURRENCY_LIMIT}")
+
+
+def create_generation_function(name, params):
+    # Define the function dynamically with parameters
+    function_code = f"""
+def {name}({params}):
+    return handle_generation({params})
+"""
+    # Execute the function definition
+    exec(function_code, globals())
 
 with gr.Blocks() as demo: 
     user_data = gr.State({
@@ -69,10 +79,13 @@ with gr.Blocks() as demo:
                                     "Please don't give extremely large number.")
 
             with gr.Row():
-                for image_style in IMAGE_STYLE_CHOICES:
+                count = 0
+                for i in range(len(IMAGE_STYLE_CHOICES)):
+                    image_style = IMAGE_STYLE_CHOICES[i]
                     button = gr.Button(image_style, interactive=True)
                     image_style_btns.append(button)
-                                
+                    create_generation_function(f"generation_{i}", "params")
+   
             # Add a spacer to keep distance between buttons
             gr.HTML("<br><br>")
             logout_button = gr.Button("Logout", 
@@ -96,17 +109,19 @@ with gr.Blocks() as demo:
 
     satisfaction.change(satisfaction_slider_change, inputs=[satisfaction], outputs=save_button)
     
-    for image_style, btn in zip(IMAGE_STYLE_CHOICES, image_style_btns):
+    for i in range(len(image_style_btns)):
+        image_style = IMAGE_STYLE_CHOICES[i]
+        btn = image_style_btns[i]
         btn.click(fn=disable_component, inputs=group_ui + image_style_btns + [logout_button], 
                                         outputs=group_ui + image_style_btns+ [logout_button],
                                         trigger_mode="once") \
             .then(fn=update_input, inputs=[user_data, gr.State(image_style)] + group_ui,
                                    outputs=[user_data],
                                    trigger_mode="once") \
-            .then(fn=handle_generation, inputs=[user_data], 
-                                        outputs=post_ui + group_ui + image_style_btns + [logout_button],
-                                        show_progress=True, trigger_mode="once",
-                                        concurrency_limit=1, queue=True) \
+            .then(fn=globals()[f"generation_{i}"], inputs=[user_data], 
+                                    outputs=post_ui + group_ui + image_style_btns + [logout_button],
+                                    show_progress=True, trigger_mode="once",
+                                    concurrency_limit=1, queue=True) \
 
     save_button.click(fn=handle_save, 
                       inputs=[user_data, satisfaction, why_unsatisfied],

@@ -1,4 +1,4 @@
-import warnings, os, gc, time, json, csv, copy, random
+import warnings, os, gc, time, json, csv, copy, random, socket, pickle, io
 import logging as logger
 
 import torch
@@ -10,10 +10,9 @@ from diffusers.utils import logging
 from transformers import CLIPImageProcessor
 from datetime import datetime
 from pynvml import *
+from PIL import Image
 
-from config import MODEL_NAME_PATH_MAP, CRED_FPATH, SAFETY_CHECK, \
-                   IMAGE_STYLE_CHOICES, INITIAL_IMAGE_SIZE, FREE_MEMORY_THRESHOLD, \
-                   USER_DATA_STORE_FPATH, PRELOAD_MODELS
+from config import CRED_FPATH, SAFETY_CHECK, IMAGE_STYLE_CHOICES, USER_DATA_STORE_FPATH
 
 import nltk
 from nltk.tokenize import word_tokenize
@@ -160,7 +159,14 @@ def handle_save(user_data, satisfaction, why_unsatisfied):
     final_return.append(info_output)
     
     return final_return
-        
+
+def disable_component(*argv):
+    final_res = []
+    for arg in argv:
+        final_res.append(gr.update(interactive=False))
+    # final_res.append(gr.update(visible=False)) # input col
+    return final_res
+    
 def update_input(user_data, image_style, image_size, prompt, negative_prompt, 
                  sampling_steps, cfg_scale, seed):
     user_data['image_style'] = image_style 
@@ -170,14 +176,10 @@ def update_input(user_data, image_style, image_size, prompt, negative_prompt,
     user_data['sampling_steps'] = sampling_steps 
     user_data['cfg_scale'] = cfg_scale 
     user_data['seed'] = seed 
+    user_data['image_width'] = 520
+    user_data['image_height'] = 600
+    user_data['num_images'] = 4
     return user_data
-
-def disable_component(*argv):
-    final_res = []
-    for arg in argv:
-        final_res.append(gr.update(interactive=False))
-    # final_res.append(gr.update(visible=False)) # input col
-    return final_res
 
 def handle_generation(user_data):
     
@@ -225,20 +227,30 @@ def handle_generation(user_data):
     
     # Generate image
     try:
-        image_res = PRELOAD_MODELS[user_data['image_style']](
-                        prompt=user_data['prompt'],
-                        negative_prompt=user_data['negative_prompt'], 
-                        num_inference_steps=user_data['sampling_steps'], # sampling steps
-                        guidance_scale=user_data['cfg_scale'], # cfg
-                        generator=torch.manual_seed(user_data['seed']),
-                        num_images_per_prompt=4,
-                    )
+        # send request to server
+        client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        client_socket.connect(('localhost', 65432))
+        data = pickle.dumps(user_data)
+        client_socket.sendall(data)
+
+        # Receive the data from the server
+        received_data = b""
+        while True:
+            packet = client_socket.recv(4096)
+            if not packet:
+                break
+            received_data += packet
+
+        # Unpickle the received data
+        res = pickle.loads(received_data)
         
-        nsfw_detected = image_res['nsfw_content_detected'][0]
+        # Deserialize images
+        for i in range(4):
+            img = Image.open(io.BytesIO(res[f'image{i}']))
+            res[f'image{i}'] = img
+
+        client_socket.close()
         
-        image = image_res.images[0] # PIL.Image.Image
-        
-        torch.cuda.empty_cache()
         
     except Exception as e:
         MYLOGGER.info(f"ERROR message from USER {username} ------------- generate image")
@@ -248,7 +260,7 @@ def handle_generation(user_data):
     ############################################################################
     
     if SAFETY_CHECK:
-        if nsfw_detected:
+        if res['nsfw0']:
             gr.Warning("Please use proper prompt!")
             MYLOGGER.info(f"---- USER {username} : ---- improper prompt")
             return early_return
@@ -258,7 +270,7 @@ def handle_generation(user_data):
     info_output = copy.deepcopy(user_data)
     info_output.pop('timestamp', None)
     
-    final_return = [image, info_output]
+    final_return = [res['image0'], info_output]
     final_return.append(gr.update(visible=True, interactive=False)) # save button
     final_return.append(gr.update(visible=True, interactive=True)) # satisfaction
     final_return.append(gr.update(visible=True, interactive=True)) # why unsatisfied
@@ -270,7 +282,9 @@ def handle_generation(user_data):
     
     return final_return
 
+
 ################################################################################
+
 
 def get_cuda_info():
     print('################################################################')
