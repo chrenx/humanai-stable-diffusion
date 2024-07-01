@@ -38,7 +38,11 @@ IMAGE_STYLE_CHOICES = ["Oil Painting",
                        "Car Sketch",
                        "Slate Pencil"]
 
-IMAGE_SIZE_CHOICES = [512]
+IMAGE_SIZE_CHOICES = [
+    "384x512 (4:3 ratio)", "300x400 (4:3 ratio)", "240x320 (4:3 ratio)",
+    "288x512 (16:9 ratio)", "225x400 (16:9 ratio)", "180x320 (16:9 ratio)",
+    "512x512 (1:1 ratio)", "400x400 (1:1 ratio)", "320x320 (1:1 ratio)"
+]
                          
 FREE_MEMORY_THRESHOLD = 9178892800 # 8178892800 # 7864320000 # 8864320000 # 7864320000 # 10050223473 # bytes 7340032000
 FREE_MEMORY_PERCENTAGE_THRESHOLD = 0.39
@@ -47,6 +51,7 @@ INITIAL_SAMPLING_STEPS = 25
 INITIAL_CFG = 7
 INITIAL_SEED = 246372
 INITIAL_IMAGE_SIZE = 512
+MAX_NUM_IMAGES = 4
 
 
 import torch

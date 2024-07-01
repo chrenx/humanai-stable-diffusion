@@ -1,4 +1,4 @@
-import warnings, os, gc, time, json, csv, copy, random, socket, pickle, io
+import warnings, os, gc, time, json, csv, copy, random, socket, pickle, io, re
 import logging as logger
 
 import torch
@@ -12,7 +12,7 @@ from datetime import datetime
 from pynvml import *
 from PIL import Image
 
-from config import CRED_FPATH, SAFETY_CHECK, IMAGE_STYLE_CHOICES, USER_DATA_STORE_FPATH
+from config import CRED_FPATH, MAX_NUM_IMAGES, IMAGE_STYLE_CHOICES, USER_DATA_STORE_FPATH
 
 import nltk
 from nltk.tokenize import word_tokenize
@@ -60,28 +60,30 @@ def create_greeting(user_data, request: gr.Request):
     final_return = [
         user_data,
         welcome_msg, 
-        gr.update(visible=True), # image_style
-        gr.update(visible=True), # image_size
-        gr.update(visible=True), # prompt
-        gr.update(visible=True), # negative_prompt
-        gr.update(visible=True), # sampling_steps
-        gr.update(visible=True), # cfg_scale
-        gr.update(visible=True), # seed
-        gr.update(visible=True), # generate_button
-        gr.update(visible=True), # logout_button
-        gr.update(visible=True), # image_output
-        gr.update(visible=True), # info_output
+        gr.update(visible=True), # page_1
+        gr.update(visible=False), # page_2
+        gr.update(visible=False), # page_2_2
+        gr.update(visible=False) # page_2_3
     ]
     return final_return
 
-def satisfaction_slider_change(satisfaction):
-    if int(satisfaction) == 0:
-        # gr.Warning("Please choose your satisfaction.")
-        return gr.update(interactive=False) # save btn
-    else:
-        return gr.update(interactive=True) # save btn
+def satisfaction_slider_change(user_data, *argv):
+    # MAX_NUM_IMAGES arg in argv
+    enable_save_btn = True
+    for i in range(len(argv)):
+        try:
+            tmp = int(argv[i])
+        except Exception as e:
+            gr.Warning("Please rate the image properly.")
+            MYLOGGER.info(f"------USER {user_data['username']} error: satisfaction_slider_change")
+            MYLOGGER.info(e)
+            return gr.update(interactive=False)
+        if user_data['proper_save'][i] and int(argv[i]) == 0:
+            enable_save_btn = False         
+    return gr.update(interactive=enable_save_btn) # save btn
 
-def handle_save(user_data, satisfaction, why_unsatisfied):
+def handle_save(user_data, satisfaction_0, satisfaction_1, satisfaction_2, satisfaction_3,
+                comment_0, comment_1, comment_2, comment_3):
     """
     Returns:
         user_data: gr.State({})
@@ -90,8 +92,14 @@ def handle_save(user_data, satisfaction, why_unsatisfied):
         save_button: gr.Button()
         generate_button: gr.Button() 
     """
-    user_data['satisfaction'] = satisfaction
-    user_data['why_unsatisfied'] = why_unsatisfied
+    user_data['satisfaction_0'] = satisfaction_0
+    user_data['satisfaction_1'] = satisfaction_1
+    user_data['satisfaction_2'] = satisfaction_2
+    user_data['satisfaction_3'] = satisfaction_3
+    user_data['comment_0'] = comment_0
+    user_data['comment_1'] = comment_1
+    user_data['comment_2'] = comment_2
+    user_data['comment_3'] = comment_3
     
     #********** save to csv ***************************************************
     store_fpath = USER_DATA_STORE_FPATH
@@ -127,71 +135,112 @@ def handle_save(user_data, satisfaction, why_unsatisfied):
         user_data['sampling_steps'],
         user_data['cfg_scale'],
         user_data['seed'],
-        user_data['satisfaction'],
-        user_data['why_unsatisfied'],
+        user_data['satisfaction_0'],
+        user_data['satisfaction_1'],
+        user_data['satisfaction_2'],
+        user_data['satisfaction_3'],
+        user_data['comment_0'],
+        user_data['comment_1'],
+        user_data['comment_2'],
+        user_data['comment_3']
     ]
+    
+    headers = ['timestamp', 'username', 'last_timestamp', 'image_style', 'image_size', 'prompt',
+               'negative_prompt', 'sampling_steps', 'cfg_scale', 'seed', 'satisfaction_0',
+               'satisfaction_1', 'satisfaction_2', 'satisfaction_3', 'comment_0', 'comment_1',
+               'comment_2', 'comment_3']
 
+    file_exists = os.path.isfile(store_fpath)
+    
     with open(store_fpath, mode='a', newline='') as file:
         writer = csv.writer(file)
+        if not file_exists or os.path.getsize(store_fpath) == 0:
+            writer.writerow(headers) # write headers
         writer.writerow(row)
-    # gr.Info("Successfully saved info. If you want to save the image, "\
-    #         "please click the button on the top right of image")
+    gr.Info("Successfully saved info. If you want to save the image, "\
+            "please click the button on the top right of image")
     #*************************************************************
     info_output = copy.deepcopy(user_data)
     info_output['saved_time'] = cur_time
     info_output.pop('timestamp', None)
     
-    user_data["satisfaction"] = 0
-    user_data['why_unsatisfied'] = ""
     
     final_return = [
         user_data, 
-        gr.update(visible=False, value=0, interactive=True), # satisfaction
-        gr.update(visible=False, value=""), # why_unsatisfied
-        gr.update(visible=False, interactive=False), # save_button
+        info_output,
+        gr.update(visible=True, interactive=False), # save_button
+        gr.update(visible=True, interactive=True), # generate_next
     ]
-    
-    for _ in IMAGE_STYLE_CHOICES:
-        final_return.append(gr.update(visible=True, interactive=True))
-    
-    for _ in range(6): # group ui
-        final_return.append(gr.update(visible=True, interactive=True))
-    final_return.append(info_output)
     
     return final_return
 
-def disable_component(*argv):
-    final_res = []
-    for arg in argv:
-        final_res.append(gr.update(interactive=False))
-    # final_res.append(gr.update(visible=False)) # input col
-    return final_res
+def go_to_page_2():
+    final_return = [
+        gr.update(visible=False), # page_1
+        gr.update(visible=True), # page_2
+        gr.update(visible=True), # page_2_2
+        gr.update(visible=True), # page_2_3
+    ]
+    for i in range(MAX_NUM_IMAGES): # all_col_image
+        final_return.append(gr.update(value=None, visible=True))
+    return final_return
+
+def go_to_page_1():
+    final_return = [
+        gr.update(visible=True), # page_1
+        gr.update(visible=False), # page_2
+        gr.update(visible=False), # page_2_2
+        gr.update(visible=False), # page_2_3
+        gr.update(visible=True, interactive=False), # save_button
+        gr.update(visible=True, interactive=False) # generate next
+    ]
+    all_image_output = []
+    all_satisfaction = []
+    all_comment = []
     
-def update_input(user_data, image_style, image_size, prompt, negative_prompt, 
+    for _ in range(MAX_NUM_IMAGES):
+        all_image_output.append(gr.update(value=None, visible=True))
+        all_satisfaction.append(gr.update(value=0, visible=True))
+        all_comment.append(gr.update(value=None, visible=True))
+        
+    final_return += all_image_output + all_satisfaction + all_comment
+        
+    return final_return
+    
+def update_input(user_data, image_style, num_images, image_size, prompt, negative_prompt, 
                  sampling_steps, cfg_scale, seed):
-    user_data['image_style'] = image_style 
+    user_data['image_style'] = image_style
+    user_data['num_images'] = int(num_images)
     user_data['image_size'] = image_size 
     user_data['prompt'] = prompt 
     user_data['negative_prompt'] = negative_prompt 
-    user_data['sampling_steps'] = sampling_steps 
-    user_data['cfg_scale'] = cfg_scale 
-    user_data['seed'] = seed 
-    user_data['image_width'] = 520
-    user_data['image_height'] = 600
-    user_data['num_images'] = 4
+    user_data['sampling_steps'] = int(sampling_steps) 
+    user_data['cfg_scale'] = int(cfg_scale) 
+    user_data['seed'] = int(seed) 
+    
+    match = re.search(r"(\d+)x(\d+)", image_size)
+    width = int(match.group(1))
+    height = int(match.group(2))
+    user_data['image_width'] = width
+    user_data['image_height'] = height
+    
     return user_data
 
 def handle_generation(user_data):
     
     #* Check early return ******************************************************
-    early_return = [] # 13 in total
-    for i in range(5): # post_ui
-        early_return.append(gr.update())
-    for i in range(6): # group ui
-        early_return.append(gr.update(visible=True, interactive=True)) 
-    early_return.append(gr.update(visible=True, interactive=True)) # generate btn
-    early_return.append(gr.update(visible=True, interactive=True)) # logout btn
-    
+    early_return = [user_data, gr.update(visible=True), gr.update(visible=False)] # page 1, 2
+    early_return += [gr.update(visible=False), gr.update(visible=False)] # page_2_2, page_2_3
+    early_return.append(user_data)
+    for i in range(MAX_NUM_IMAGES): # all_col_image
+        early_return.append(gr.update(visible=True)) 
+    for i in range(MAX_NUM_IMAGES): # all_image_output
+        early_return.append(gr.update(visible=True, value=None))
+    for i in range(MAX_NUM_IMAGES): # all_satisfaction
+        early_return.append(gr.update(visible=False, value=0)) 
+    for i in range(MAX_NUM_IMAGES): # all_comment
+        early_return.append(gr.update(visible=False, value=None)) 
+
     if user_data['image_style'] is None or user_data['image_style'] not in IMAGE_STYLE_CHOICES:
         gr.Warning("Please select your imaging style!")
         return early_return
@@ -245,12 +294,11 @@ def handle_generation(user_data):
         res = pickle.loads(received_data)
         
         # Deserialize images
-        for i in range(4):
+        for i in range(user_data['num_images']):
             img = Image.open(io.BytesIO(res[f'image{i}']))
             res[f'image{i}'] = img
 
         client_socket.close()
-        
         
     except Exception as e:
         MYLOGGER.info(f"ERROR message from USER {username} ------------- generate image")
@@ -258,27 +306,51 @@ def handle_generation(user_data):
         return early_return
     
     ############################################################################
-    
-    if SAFETY_CHECK:
-        if res['nsfw0']:
-            gr.Warning("Please use proper prompt!")
-            MYLOGGER.info(f"---- USER {username} : ---- improper prompt")
-            return early_return
-    
     MYLOGGER.info(f"---- USER {username} successfully generated image")
+    
+    all_col_image = []
+    all_image_output = []
+    all_satisfaction = []
+    all_comment = [] 
+    
+    all_improper = True
+    
+    user_data['proper_save'] = [False] * MAX_NUM_IMAGES
+    
+    for i in range(MAX_NUM_IMAGES):
+        if i < int(user_data['num_images']):
+            all_col_image.append(gr.update(visible=True))
+            if res[f'nsfw{i}']: # improper image
+                all_image_output.append(gr.update(value=None, 
+                                                  label="IMPROPER image generated by model!", 
+                                                  show_label=True))
+                all_satisfaction.append(gr.update(visible=False, value=0))
+                all_comment.append(gr.update(visible=False, value=None)) 
+            else:
+                user_data['proper_save'][i] = True
+                all_improper = False
+                all_image_output.append(gr.update(value=res[f'image{i}']))
+                all_satisfaction.append(gr.update(visible=True, value=0))
+                all_comment.append(gr.update(visible=True, value=None)) 
+        else:
+            all_col_image.append(gr.update(visible=True))
+            all_image_output.append(gr.update(visible=True, value=None))
+            all_satisfaction.append(gr.update(visible=False, value=0))
+            all_comment.append(gr.update(visible=False, value=None))
     
     info_output = copy.deepcopy(user_data)
     info_output.pop('timestamp', None)
     
-    final_return = [res['image0'], info_output]
-    final_return.append(gr.update(visible=True, interactive=False)) # save button
-    final_return.append(gr.update(visible=True, interactive=True)) # satisfaction
-    final_return.append(gr.update(visible=True, interactive=True)) # why unsatisfied
-    for i in range(6): # group ui
-        final_return.append(gr.update(visible=True, interactive=False))
-    for _ in IMAGE_STYLE_CHOICES:
-        final_return.append(gr.update(visible=True, interactive=False)) # generate btn
-    final_return.append(gr.update(visible=True, interactive=True)) # logout btn
+    #                          page_1                    page_2
+    final_return = [user_data, gr.update(visible=False), gr.update(visible=True), 
+                    gr.update(visible=True), gr.update(visible=True), # page_2_2, page_2_3
+                    info_output]
+    final_return += all_col_image + all_image_output + all_satisfaction + all_comment
+        
+    
+    if all_improper:
+        gr.Warning("All generated images are impropered. Consider using proper prompt.")
+        return early_return
     
     return final_return
 
