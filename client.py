@@ -5,7 +5,7 @@ from fastapi import FastAPI
 from config import IMAGE_STYLE_CHOICES, IMAGE_SIZE_CHOICES, \
                    INITIAL_SAMPLING_STEPS, INITIAL_CFG, INITIAL_SEED, \
                    CONCURRENCY_LIMIT, AUTH_MSG_FPATH
-from utils.client_util import create_greeting, get_cuda_info, register_page, login_page, \
+from utils.client_util import load_app, get_cuda_info, register_page, login_page, forget_page, \
                                 debug_fn, handle_save, \
                                 satisfaction_slider_change, \
                                 go_to_page_1, go_to_page_2, update_input, \
@@ -56,23 +56,8 @@ with gr.Blocks() as demo:
     
     with gr.Row():
         login_message = gr.Markdown(value="Not logged in")
-    
-    with gr.Row() as page_auth:
-        with gr.Tab("Register"):
-            register_email = gr.Textbox(label="email")
-            register_password = gr.Textbox(label="Password", type="password")
-            register_button = gr.Button("Register")
-            register_output = gr.Textbox(label="Output")
-            register_button.click(fn=register_page, inputs=[register_email, register_password], outputs=register_output)
 
-        with gr.Tab("Login"):
-            login_username = gr.Textbox(label="Username")
-            login_password = gr.Textbox(label="Password", type="password")
-            login_button = gr.Button("Login")
-            login_output = gr.Textbox(label="Output")
-            login_button.click(fn=login_page, inputs=[login_username, login_password], outputs=login_output)
-        
-    with gr.Row() as page_1:
+    with gr.Row(visible=False) as page_1:
         with gr.Column(scale=1) as input_col:
             num_images = gr.Dropdown(label="Number of images you want to generate for one prompt",
                                     choices=[1,2,3,4], value=2,
@@ -155,6 +140,29 @@ with gr.Blocks() as demo:
     with gr.Row(visible=False) as page_2_3:
         info_output = gr.Json(label="Generation Info")
             
+    # Authentification #########################################################            
+    with gr.Row(visible=True) as page_auth:
+        with gr.Tab("Login"):
+            login_username = gr.Textbox(label="Email")
+            login_password = gr.Textbox(label="Password", type="password")
+            login_button = gr.Button("Login")
+            login_output = gr.Textbox(label="Login Message:")
+            login_button.click(fn=login_page, inputs=[login_username, login_password], 
+                               outputs=[login_message, login_output, page_auth, page_1])
+        
+        with gr.Tab("Register"):
+            register_email = gr.Textbox(label="Email")
+            register_button = gr.Button("Register")
+            register_output = gr.Textbox(label="Register Message:")
+            register_button.click(fn=register_page, inputs=[register_email], 
+                                  outputs=register_output)
+            
+        with gr.Tab("Forget Account"):
+            forget_email = gr.Textbox(label="Email")
+            forget_button = gr.Button("Get New Password")
+            forget_output = gr.Textbox(label="Message:")
+            forget_button.click(fn=forget_page, inputs=[forget_email],
+                                outputs=[forget_output])
     ########################################################################
     
     group_ui = [num_images, image_size, prompt, negative_prompt, sampling_steps, cfg_scale, seed] #7
@@ -204,8 +212,8 @@ with gr.Blocks() as demo:
     
     debug.click(fn=debug_fn, inputs=[user_data], trigger_mode="once")
 
-    demo.load(create_greeting, inputs=[user_data], 
-                               outputs=[user_data, login_message, 
+    demo.load(load_app, inputs=[user_data], 
+                               outputs=[user_data, login_message, page_auth,
                                         page_1, page_2, page_2_2, page_2_3])
 
 ####################################################################################################

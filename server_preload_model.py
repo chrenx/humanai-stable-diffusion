@@ -12,7 +12,7 @@ from diffusers.utils import logging as diffuser_logger
 import logging as LOGGER
 import os
 
-from config import IMAGE_STYLE_CHOICES
+from config import IMAGE_STYLE_CHOICES, NUM_LISTEN
 from config_preload_model import preload_all_model
 
 diffuser_logger.set_verbosity_error()
@@ -100,7 +100,7 @@ def main():
     
     server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     server_socket.bind(('localhost', 65432))
-    server_socket.listen(2)
+    server_socket.listen(NUM_LISTEN)
     LOGGER.info("Server is waiting for connections...")
 
     # Register models

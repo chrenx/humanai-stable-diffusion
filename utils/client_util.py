@@ -48,20 +48,53 @@ def get_auth_cred(username, password):
         return False
     return True
 
-def login_page():
+def login_page(login_username, login_password):
+    with open(CRED_FPATH, encoding='utf-8') as f:
+        cred = json.load(f)
+    final_return = []
+    if login_username not in cred or cred[login_username] != login_password:
+        final_return.append(gr.update(value="Not logged in"))
+        final_return.append(gr.update(value="Incorrect Credentials"))
+        final_return.append(gr.update(visible=True)) # page_auth
+        final_return.append(gr.update(visible=False)) # page_1
+    else:
+        final_return.append(gr.update(value=f"Welcome to Text2Image Generation,  {login_username}!"))
+        final_return.append(gr.update(value="Logined!"))
+        final_return.append(gr.update(visible=False))
+        final_return.append(gr.update(visible=True))
+        MYLOGGER.info(f">>>>>>>> USER {login_username} Login.")
+    return final_return
+
+def register_page(register_email):
+    # double check if the email has already existed
+    with open(CRED_FPATH, encoding='utf-8') as f:
+        cred = json.load(f)
+    final_return = []
+    if register_email in cred:
+        gr.Warning("Account exists.")
+        final_return.append(gr.update(value="Account exists. "\
+                            f"If you can't find your password, please go to Forget Account tab."))
+    else:
+        # register a new account and send password to the email address
+        data = {"register_email":register_email}
+        client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        client_socket.connect(('localhost', 66432))
+        data = pickle.dumps(register_email)
+        client_socket.sendall(data)
+        final_return.append(gr.update("You will receive an email from us with some random "\
+                        f"password. Please keep it safe. You are allowed to used it for a week"))
+    return final_return
+
+
+def forget_page(forgert_email):
     pass
 
-def register_page():
-    pass
-
-def create_greeting(user_data, request: gr.Request):
-    user_data['username'] = request.username
-    welcome_msg = f"Welcome to Text2Image Generation,  {user_data['username']}!"
-    MYLOGGER.info(f">>>>>>>> USER {user_data['username']} Login.")
+def load_app(user_data, request: gr.Request):
     final_return = [
         user_data,
-        welcome_msg, 
-        gr.update(visible=True), # page_1
+        gr.update(value="Not logged in"), # login msg
+        gr.update(visible=True), # page_auth
+        gr.update(visible=False), # page_1
         gr.update(visible=False), # page_2
         gr.update(visible=False), # page_2_2
         gr.update(visible=False) # page_2_3
