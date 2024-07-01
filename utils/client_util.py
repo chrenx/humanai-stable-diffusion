@@ -12,13 +12,12 @@ from datetime import datetime
 from pynvml import *
 from PIL import Image
 
-from config import CRED_FPATH, MAX_NUM_IMAGES, IMAGE_STYLE_CHOICES, USER_DATA_STORE_FPATH
+from config import CRED_FPATH, MAX_NUM_IMAGES, IMAGE_STYLE_CHOICES, USER_DATA_STORE_FPATH, \
+                    LIMITED_TOKEN
 
-import nltk
-from nltk.tokenize import word_tokenize
+from token_count import TokenCount
+TOKEN_COUNTER = TokenCount(model_name="gpt-3.5-turbo")
 
-# Ensure that the necessary NLTK data files are downloaded
-nltk.download('punkt')
 
 logging.set_verbosity_error()
 warnings.filterwarnings("ignore")
@@ -32,10 +31,6 @@ logger.basicConfig(level=os.environ.get("LOGLEVEL", "INFO"))
 MYLOGGER = logger.getLogger()
 
 ################################################################################
-
-def count_tokens(input_string):
-    tokens = word_tokenize(input_string)
-    return len(tokens)
 
 def debug_fn(user_data):
     gr.Warning("DEBUGGING ...")
@@ -52,6 +47,12 @@ def get_auth_cred(username, password):
     if username not in cred or cred[username] != password:
         return False
     return True
+
+def login_page():
+    pass
+
+def register_page():
+    pass
 
 def create_greeting(user_data, request: gr.Request):
     user_data['username'] = request.username
@@ -248,6 +249,14 @@ def handle_generation(user_data):
     if user_data['prompt'] == '' and user_data['negative_prompt'] == '' or \
        user_data['prompt'].isspace() and user_data['negative_prompt'].isspace():
         gr.Warning("Please provide some prompt!")
+        return early_return
+    
+    num_token_prompt = TOKEN_COUNTER.num_tokens_from_string(user_data['prompt'])
+    num_token_negative_prompt = TOKEN_COUNTER.num_tokens_from_string(user_data['negative_prompt'])
+    
+    if num_token_prompt > LIMITED_TOKEN or num_token_negative_prompt > LIMITED_TOKEN:
+        gr.Warning(f"Prompt is too long. Limited to 77 tokens. "\
+                   f"Prompt: {num_token_prompt}, Negative Prompt: {num_token_negative_prompt}")
         return early_return
     
     try:

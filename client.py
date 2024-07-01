@@ -5,7 +5,7 @@ from fastapi import FastAPI
 from config import IMAGE_STYLE_CHOICES, IMAGE_SIZE_CHOICES, \
                    INITIAL_SAMPLING_STEPS, INITIAL_CFG, INITIAL_SEED, \
                    CONCURRENCY_LIMIT, AUTH_MSG_FPATH
-from utils.client_util import create_greeting, get_cuda_info, get_auth_cred, \
+from utils.client_util import create_greeting, get_cuda_info, register_page, login_page, \
                                 debug_fn, handle_save, \
                                 satisfaction_slider_change, \
                                 go_to_page_1, go_to_page_2, update_input, \
@@ -56,6 +56,22 @@ with gr.Blocks() as demo:
     
     with gr.Row():
         login_message = gr.Markdown(value="Not logged in")
+    
+    with gr.Row() as page_auth:
+        with gr.Tab("Register"):
+            register_email = gr.Textbox(label="email")
+            register_password = gr.Textbox(label="Password", type="password")
+            register_button = gr.Button("Register")
+            register_output = gr.Textbox(label="Output")
+            register_button.click(fn=register_page, inputs=[register_email, register_password], outputs=register_output)
+
+        with gr.Tab("Login"):
+            login_username = gr.Textbox(label="Username")
+            login_password = gr.Textbox(label="Password", type="password")
+            login_button = gr.Button("Login")
+            login_output = gr.Textbox(label="Output")
+            login_button.click(fn=login_page, inputs=[login_username, login_password], outputs=login_output)
+        
     with gr.Row() as page_1:
         with gr.Column(scale=1) as input_col:
             num_images = gr.Dropdown(label="Number of images you want to generate for one prompt",
@@ -135,6 +151,7 @@ with gr.Blocks() as demo:
                                 visible=True, interactive=False)
         generate_next = gr.Button("Generate Next", 
                                 visible=True, interactive=False)
+        
     with gr.Row(visible=False) as page_2_3:
         info_output = gr.Json(label="Generation Info")
             
@@ -200,8 +217,8 @@ with open(AUTH_MSG_FPATH, 'r') as f:
 
 app, _, _ = demo.queue().launch(
     share=True,
-    auth=get_auth_cred,
-    auth_message=auth_message,
+    # auth=get_auth_cred,
+    # auth_message=auth_message,
     max_threads=CONCURRENCY_LIMIT,
     # server_name="0.0.0.0",
     # server_port=7860,
