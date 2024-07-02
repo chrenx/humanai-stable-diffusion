@@ -5,7 +5,7 @@ USER_DATA_STORE_FPATH = "user-data/public_user_data.csv"
 
 SAFETY_CHECK = True
 
-CRED_FPATH = "auth.json"
+CRED_FPATH = "authentication.json"
 
 MODEL_NAME_PATH_MAP = {
     "Oil Painting": "models/oilPaintingV10.safetensors",

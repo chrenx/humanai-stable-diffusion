@@ -22,12 +22,12 @@ TOKEN_COUNTER = TokenCount(model_name="gpt-3.5-turbo")
 logging.set_verbosity_error()
 warnings.filterwarnings("ignore")
 
-# logger.basicConfig(filename=os.path.join("user-data","sys_info.log"),
-#                     filemode='a',
-#                     format='%(asctime)s.%(msecs)02d %(levelname)s %(message)s',
-#                     datefmt='%Y-%m-%d-%H:%M:%S',
-#                     level=os.environ.get("LOGLEVEL", "INFO"))
-logger.basicConfig(level=os.environ.get("LOGLEVEL", "INFO"))
+logger.basicConfig(filename=os.path.join("user-data","sys_info.log"),
+                    filemode='a',
+                    format='%(asctime)s.%(msecs)02d %(levelname)s %(message)s',
+                    datefmt='%Y-%m-%d-%H:%M:%S',
+                    level=os.environ.get("LOGLEVEL", "INFO"))
+# logger.basicConfig(level=os.environ.get("LOGLEVEL", "INFO"))
 MYLOGGER = logger.getLogger()
 
 ################################################################################
@@ -48,20 +48,22 @@ def get_auth_cred(username, password):
         return False
     return True
 
-def login_page(login_username, login_password):
+def login_page(login_username, login_password, user_data):
     with open(CRED_FPATH, encoding='utf-8') as f:
         cred = json.load(f)
     final_return = []
-    if login_username not in cred or cred[login_username] != login_password:
+    if login_username not in cred or cred[login_username]['password'] != login_password:
         final_return.append(gr.update(value="Not logged in"))
-        final_return.append(gr.update(value="Incorrect Credentials"))
+        gr.Warning("Incorrect Credentials")
         final_return.append(gr.update(visible=True)) # page_auth
         final_return.append(gr.update(visible=False)) # page_1
+        final_return.append(user_data)
     else:
         final_return.append(gr.update(value=f"Welcome to Text2Image Generation,  {login_username}!"))
-        final_return.append(gr.update(value="Logined!"))
         final_return.append(gr.update(visible=False))
         final_return.append(gr.update(visible=True))
+        user_data['username'] = login_username
+        final_return.append(user_data)
         MYLOGGER.info(f">>>>>>>> USER {login_username} Login.")
     return final_return
 
@@ -69,25 +71,47 @@ def register_page(register_email):
     # double check if the email has already existed
     with open(CRED_FPATH, encoding='utf-8') as f:
         cred = json.load(f)
-    final_return = []
-    if register_email in cred:
-        gr.Warning("Account exists.")
-        final_return.append(gr.update(value="Account exists. "\
-                            f"If you can't find your password, please go to Forget Account tab."))
-    else:
-        # register a new account and send password to the email address
-        data = {"register_email":register_email}
-        client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        client_socket.connect(('localhost', 66432))
-        data = pickle.dumps(register_email)
-        client_socket.sendall(data)
-        final_return.append(gr.update("You will receive an email from us with some random "\
-                        f"password. Please keep it safe. You are allowed to used it for a week"))
-    return final_return
 
+    if register_email in cred:
+        gr.Warning("Account exists. If you can't find your password, "\
+                   f"please go to Forget Account tab.")
+    else:
+        try:
+            # register a new account and send password to the email address
+            data = {"register_email":register_email, 'forget': False}
+            client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            client_socket.connect(('localhost', 65431))
+            data = pickle.dumps(data)
+            client_socket.sendall(data)
+            gr.Info("You will receive an email from us with some random "\
+                    f"password. Please keep it safe. You are allowed to used it for a week.")
+            gr.Info(f"If you don't receive email from us, please check if you type the correct "\
+                    f"email address. Check SPAM just in case!")
+        except Exception as e:
+            MYLOGGER.info(f"error: ------------")
+            MYLOGGER.info(e)
+            gr.Warning("Error during register. Please contact administor.")
 
 def forget_page(forgert_email):
-    pass
+    with open(CRED_FPATH, encoding='utf-8') as f:
+        cred = json.load(f)
+
+    if forgert_email not in cred:
+        gr.Warning("You don't have an account with use. Please register.")
+        return
+    try:
+        # register a new account and send password to the email address
+        data = {"register_email":forgert_email, 'forget': True}
+        client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        client_socket.connect(('localhost', 65431))
+        data = pickle.dumps(data)
+        client_socket.sendall(data)
+        gr.Info("You will receive an email from us. Please keep it safe.")
+        gr.Info(f"Make sure the email address is correct. Check SPAM just in case!")
+    except Exception as e:
+        MYLOGGER.info(f"error: ------------")
+        MYLOGGER.info(e)
+        gr.Warning("Error during register. Please contact administor.")
 
 def load_app(user_data, request: gr.Request):
     final_return = [

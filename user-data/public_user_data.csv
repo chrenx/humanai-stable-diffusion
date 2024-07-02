@@ -1,8 +1,5 @@
 timestamp,username,last_timestamp,image_style,image_size,prompt,negative_prompt,sampling_steps,cfg_scale,seed,satisfaction_0,satisfaction_1,satisfaction_2,satisfaction_3,comment_0,comment_1,comment_2,comment_3
-2024_07_01_13:36:57.24,1,0,Oil Painting,384x512 (4:3 ratio),paris,,25,7,246372,2,3,0,0,,,,
-2024_07_01_13:37:35.09,1,1,Car Sketch,384x512 (4:3 ratio),paris,,25,7,246372,4,3,0,0,,,,
-2024_07_01_13:38:52.24,1,2,Interior Design,288x512 (16:9 ratio),paris,,25,7,246372,2,3,0,0,zcxsa,cccxzc,,
-2024_07_01_13:44:44.02,2,0,Fashion Cloth,384x512 (4:3 ratio),acxcsc,,25,7,246372,3,3,0,0,,,,
-2024_07_01_13:46:48.56,2,1,Game Wallpaper,288x512 (16:9 ratio),acxcscacc,ds,25,7,4432,4,4,0,0,,,,
-2024_07_01_13:47:32.23,1,3,Oil Painting,384x512 (4:3 ratio),dsad,,25,7,246372,6,3,3,0,,,563211165,
-2024_07_01_13:49:14.05,2,2,Fashion Cloth,288x512 (16:9 ratio),acxcscacc,ds,25,7,4432,3,4,0,0,,,,
+2024_07_02_00:50:20.45,952791576@qq.com,0,Fashion Sketch,240x320 (4:3 ratio),sadasd,,100,7,4343,3,2,0,3,,,,
+2024_07_02_00:50:35.73,Bs840743294@gmail.com,0,Outdoor Background,384x512 (4:3 ratio),Tiananmen square,people,100,7,246372,1,1,1,0,there are people,,,
+2024_07_02_10:11:42.37,dengkw@umich.edu,0,Game Wallpaper,288x512 (16:9 ratio),Elves,,60,7,246372,1,1,1,1,,,,
+2024_07_02_10:13:57.94,dengkw@umich.edu,1,Pencil Sketch,512x512 (1:1 ratio),Mountain,,98,7,246372,1,2,4,6,,,,

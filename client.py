@@ -11,7 +11,6 @@ from utils.client_util import load_app, get_cuda_info, register_page, login_page
                                 go_to_page_1, go_to_page_2, update_input, \
                                 MYLOGGER, handle_generation
                                 
-
 MYLOGGER.setLevel(logger.INFO)
 
 app = FastAPI()
@@ -146,23 +145,24 @@ with gr.Blocks() as demo:
             login_username = gr.Textbox(label="Email")
             login_password = gr.Textbox(label="Password", type="password")
             login_button = gr.Button("Login")
-            login_output = gr.Textbox(label="Login Message:")
-            login_button.click(fn=login_page, inputs=[login_username, login_password], 
-                               outputs=[login_message, login_output, page_auth, page_1])
+
+            login_button.click(fn=login_page, inputs=[login_username, login_password, user_data], 
+                               outputs=[login_message, page_auth, page_1, user_data],
+                               show_progress=False)
         
         with gr.Tab("Register"):
             register_email = gr.Textbox(label="Email")
             register_button = gr.Button("Register")
-            register_output = gr.Textbox(label="Register Message:")
-            register_button.click(fn=register_page, inputs=[register_email], 
-                                  outputs=register_output)
+        
+            register_button.click(fn=register_page, inputs=[register_email],
+                                  show_progress=False)
             
         with gr.Tab("Forget Account"):
             forget_email = gr.Textbox(label="Email")
             forget_button = gr.Button("Get New Password")
-            forget_output = gr.Textbox(label="Message:")
+            
             forget_button.click(fn=forget_page, inputs=[forget_email],
-                                outputs=[forget_output])
+                                show_progress=False)
     ########################################################################
     
     group_ui = [num_images, image_size, prompt, negative_prompt, sampling_steps, cfg_scale, seed] #7
@@ -228,7 +228,7 @@ app, _, _ = demo.queue().launch(
     # auth=get_auth_cred,
     # auth_message=auth_message,
     max_threads=CONCURRENCY_LIMIT,
-    # server_name="0.0.0.0",
-    # server_port=7860,
+    server_name="0.0.0.0",
+    server_port=7860,
 )
 

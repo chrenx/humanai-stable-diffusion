@@ -13,3 +13,40 @@
 2024-06-21-14:21:22.243 INFO HTTP Request: GET https://api.gradio.app/pkg-version "HTTP/1.1 200 OK"
 2024-06-21-14:21:22.499 INFO HTTP Request: GET https://api.gradio.app/v2/tunnel-request "HTTP/1.1 200 OK"
 2024-06-21-14:21:32.657 INFO >>>>>>>> USER 1 Login.
+2024-07-02-00:46:47.241 INFO *********** CONCURRENCY_LIMIT 3
+2024-07-02-00:46:47.512 INFO HTTP Request: GET https://checkip.amazonaws.com/ "HTTP/1.1 200 "
+2024-07-02-00:46:47.607 INFO HTTP Request: GET http://localhost:7860/startup-events "HTTP/1.1 200 OK"
+2024-07-02-00:46:47.787 INFO HTTP Request: GET https://api.gradio.app/pkg-version "HTTP/1.1 200 OK"
+2024-07-02-00:46:47.794 INFO HTTP Request: HEAD http://localhost:7860/ "HTTP/1.1 200 OK"
+2024-07-02-00:46:48.68 INFO HTTP Request: GET https://api.gradio.app/v2/tunnel-request "HTTP/1.1 200 OK"
+2024-07-02-00:48:01.832 INFO >>>>>>>> USER Bs840743294@gmail.com Login.
+2024-07-02-00:48:04.844 INFO >>>>>>>> USER leolymteren@gmail.com Login.
+2024-07-02-00:48:21.519 INFO >>>>>>>> USER 952791576@qq.com Login.
+2024-07-02-00:49:18.981 INFO ---- USER Bs840743294@gmail.com: ---- handle generation
+2024-07-02-00:49:21.736 INFO ---- USER 952791576@qq.com: ---- handle generation
+2024-07-02-00:49:53.559 INFO ---- USER Bs840743294@gmail.com successfully generated image
+2024-07-02-00:49:53.716 INFO ---- USER leolymteren@gmail.com: ---- handle generation
+2024-07-02-00:49:53.768 INFO ---- USER 952791576@qq.com successfully generated image
+2024-07-02-00:50:05.601 INFO ---- USER leolymteren@gmail.com successfully generated image
+2024-07-02-00:51:03.575 INFO ---- USER 952791576@qq.com: ---- handle generation
+2024-07-02-00:51:22.711 INFO ---- USER 952791576@qq.com successfully generated image
+2024-07-02-00:52:19.228 INFO ---- USER 952791576@qq.com: ---- handle generation
+2024-07-02-00:52:38.363 INFO ---- USER 952791576@qq.com successfully generated image
+2024-07-02-10:09:47.123 INFO >>>>>>>> USER dengkw@umich.edu Login.
+2024-07-02-10:10:33.66 INFO ---- USER dengkw@umich.edu: ---- handle generation
+2024-07-02-10:10:53.749 INFO ---- USER dengkw@umich.edu successfully generated image
+2024-07-02-10:11:14.219 INFO >>>>>>>> USER yuanfang.guan.1.0@gmail.com Login.
+2024-07-02-10:12:13.448 INFO ---- USER dengkw@umich.edu: ---- handle generation
+2024-07-02-10:13:13.950 INFO ---- USER dengkw@umich.edu successfully generated image
+2024-07-02-11:56:38.252 INFO *********** CONCURRENCY_LIMIT 3
+2024-07-02-11:56:38.593 INFO HTTP Request: GET https://checkip.amazonaws.com/ "HTTP/1.1 200 "
+2024-07-02-11:56:38.695 INFO HTTP Request: GET http://localhost:7860/startup-events "HTTP/1.1 200 OK"
+2024-07-02-11:56:38.902 INFO HTTP Request: GET https://api.gradio.app/pkg-version "HTTP/1.1 200 OK"
+2024-07-02-11:56:38.909 INFO HTTP Request: HEAD http://localhost:7860/ "HTTP/1.1 200 OK"
+2024-07-02-11:56:39.189 INFO HTTP Request: GET https://api.gradio.app/v2/tunnel-request "HTTP/1.1 200 OK"
+2024-07-02-12:05:06.441 INFO *********** CONCURRENCY_LIMIT 3
+2024-07-02-12:05:06.710 INFO HTTP Request: GET https://checkip.amazonaws.com/ "HTTP/1.1 200 "
+2024-07-02-12:05:06.808 INFO HTTP Request: GET https://api.gradio.app/pkg-version "HTTP/1.1 200 OK"
+2024-07-02-12:05:49.142 INFO *********** CONCURRENCY_LIMIT 3
+2024-07-02-12:05:49.365 INFO HTTP Request: GET https://checkip.amazonaws.com/ "HTTP/1.1 200 "
+2024-07-02-12:05:49.525 INFO HTTP Request: GET https://api.gradio.app/pkg-version "HTTP/1.1 200 OK"
